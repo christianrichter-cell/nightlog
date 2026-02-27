@@ -546,6 +546,12 @@ body::before {
   }
 }
 
+.cal-nav-btn:active {
+  border-color: var(--c1);
+  color: var(--c1);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.35);
+}
+
 /* Weekday labels */
 .calendar-weekdays {
   display: grid;
