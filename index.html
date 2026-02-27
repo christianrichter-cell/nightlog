@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#030311" />
+  <meta name="description" content="Cyberpunk večerní deník aktivit – záznamy každého dne" />
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="NightLog" />
+
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+
+  <title>NightLog</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- CRT overlay -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <div class="container">
+
+    <!-- ═══ HEADER ═══ -->
+    <header class="app-header">
+      <h1 class="app-title">
+        <span class="title-slash" aria-hidden="true">//</span>
+        <span class="title-main" data-text="NIGHTLOG">NIGHTLOG</span>
+        <span class="title-slash" aria-hidden="true">//</span>
+      </h1>
+      <p class="app-date" id="currentDate" aria-live="polite"></p>
+    </header>
+
+    <!-- ═══ SCORE / CHART ═══ -->
+    <section class="panel score-section" aria-label="Přehled aktivit">
+      <div class="panel-corner tl"></div>
+      <div class="panel-corner tr"></div>
+      <div class="panel-corner bl"></div>
+      <div class="panel-corner br"></div>
+
+      <div class="chart-wrap">
+        <svg
+          id="scoreChart"
+          viewBox="0 0 200 200"
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="Donut graf zastoupení aktivit"
+        >
+          <!-- Rendered by JS -->
+        </svg>
+        <div class="chart-center" aria-hidden="true">
+          <span class="chart-label">ZÁZNAMY</span>
+          <span class="chart-number" id="totalCount">0</span>
+        </div>
+      </div>
+
+      <ul class="score-legend" id="scoreLegend" aria-label="Legenda aktivit">
+        <!-- Rendered by JS -->
+      </ul>
+    </section>
+
+    <!-- ═══ ACTIVITY BUTTONS ═══ -->
+    <section class="panel activities-section" aria-label="Výběr aktivity pro dnešní den">
+      <div class="panel-corner tl"></div>
+      <div class="panel-corner tr"></div>
+      <div class="panel-corner bl"></div>
+      <div class="panel-corner br"></div>
+
+      <div class="section-label" aria-hidden="true">&gt;&gt; VYBRAT AKTIVITU &lt;&lt;</div>
+
+      <div class="buttons-grid" id="buttonsGrid" role="group" aria-label="Aktivity">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="locked-message" id="lockedMessage" role="status" aria-live="polite">
+        <span class="lock-icon" aria-hidden="true">⬡</span>
+        <span id="lockText"></span>
+      </div>
+    </section>
+
+    <!-- ═══ CALENDAR ═══ -->
+    <section class="panel calendar-section" aria-label="Kalendář historie aktivit">
+      <div class="panel-corner tl"></div>
+      <div class="panel-corner tr"></div>
+      <div class="panel-corner bl"></div>
+      <div class="panel-corner br"></div>
+
+      <div class="calendar-nav">
+        <button class="cal-nav-btn" id="prevMonth" aria-label="Předchozí měsíc">&#9664;</button>
+        <span class="calendar-title" id="calendarTitle"></span>
+        <button class="cal-nav-btn" id="nextMonth" aria-label="Následující měsíc">&#9654;</button>
+      </div>
+
+      <div class="calendar-weekdays" aria-hidden="true">
+        <span>Po</span><span>Út</span><span>St</span><span>Čt</span>
+        <span>Pá</span><span>So</span><span>Ne</span>
+      </div>
+
+      <div class="calendar-grid" id="calendarGrid" role="grid" aria-label="Dny v měsíci">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ═══ RESET ═══ -->
+    <div class="reset-section">
+      <button class="reset-btn" id="resetTodayBtn" type="button" aria-label="Resetovat dnešní záznam">
+        ↺ RESET DNE
+      </button>
+    </div>
+
+  </div><!-- /.container -->
+
+  <script src="app.js"></script>
+</body>
+</html>

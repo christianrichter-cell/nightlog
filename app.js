@@ -1,0 +1,463 @@
+/* ═══════════════════════════════════════════
+   NIGHTLOG – app.js
+   Cyberpunk Evening Activity Tracker
+   No build step. Pure Vanilla JS + localStorage.
+═══════════════════════════════════════════ */
+
+'use strict';
+
+// ── CONFIGURATION ──────────────────────────────────────────────────────────────
+// Edit names, icons, or colors here to customize activities.
+// rgb must match the hex color, comma-separated (used for rgba() in CSS).
+
+// line1 = kdo (velké, Orbitron), line2 = co (malé, mono)
+const ACTIVITIES = [
+  {
+    id:    'chris-cte',
+    line1: 'CHRIS',
+    line2: 'si čte',
+    icon:  '◈',
+    color: '#00E5FF',
+    rgb:   '0,229,255',
+  },
+  {
+    id:    'chris-tel',
+    line1: 'CHRIS',
+    line2: 'na telefonu',
+    icon:  '◁',
+    color: '#0070FF',   /* electric blue – stejná rodina jako cyan výše */
+    rgb:   '0,112,255',
+  },
+  {
+    id:    'kata-cte',
+    line1: 'KÁŤA',
+    line2: 'si čte',
+    icon:  '✦',
+    color: '#FF00BB',   /* hot magenta */
+    rgb:   '255,0,187',
+  },
+  {
+    id:    'kata-tel',
+    line1: 'KÁŤA',
+    line2: 'na telefonu',
+    icon:  '◆',
+    color: '#FF6699',   /* neonová růžová – stejná rodina jako magenta výše */
+    rgb:   '255,102,153',
+  },
+  {
+    id:    'oba-ctou',
+    line1: 'OBA',
+    line2: 'si čtou',
+    icon:  '◉',
+    color: '#00FF41',   /* neon green */
+    rgb:   '0,255,65',
+  },
+  {
+    id:    'oba-tel',
+    line1: 'OBA',
+    line2: 'na telefonu',
+    icon:  '⬢',
+    color: '#FFE600',   /* neon yellow */
+    rgb:   '255,230,0',
+  },
+];
+
+const STORAGE_KEY  = 'nightlog_v1';
+const CIRCUMFERENCE = 2 * Math.PI * 70; // SVG donut radius = 70
+
+
+// ── DATA LAYER ─────────────────────────────────────────────────────────────────
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+/**
+ * Returns "YYYY-MM-DD" for a given Date (defaults to today).
+ */
+function getDateKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Returns the activity index recorded today, or null if none.
+ */
+function getTodayActivity(data) {
+  const val = data[getDateKey()];
+  return (val !== undefined) ? val : null;
+}
+
+/**
+ * Saves today's activity. Does nothing if today is already logged.
+ */
+function recordActivity(index) {
+  const data = loadData();
+  if (getTodayActivity(data) !== null) return;
+  data[getDateKey()] = index;
+  saveData(data);
+}
+
+/**
+ * Returns an array of counts [count0, count1, …] per activity.
+ */
+function calculateCounts(data) {
+  const counts = new Array(ACTIVITIES.length).fill(0);
+  for (const val of Object.values(data)) {
+    if (Number.isInteger(val) && val >= 0 && val < ACTIVITIES.length) {
+      counts[val]++;
+    }
+  }
+  return counts;
+}
+
+
+// ── SVG HELPERS ────────────────────────────────────────────────────────────────
+
+function svgEl(tag, attrs = {}) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+
+// ── RENDER: DATE HEADER ────────────────────────────────────────────────────────
+
+function renderDate() {
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+  const str  = new Date().toLocaleDateString('cs-CZ', opts).toUpperCase();
+  document.getElementById('currentDate').textContent = `// ${str} //`;
+}
+
+
+// ── RENDER: DONUT CHART ────────────────────────────────────────────────────────
+//
+// Each activity segment is a <circle> with stroke-dasharray tuned
+// so only its proportional arc is visible. Segments are stacked by
+// offsetting stroke-dashoffset (rotate -90° so we start at 12 o'clock).
+//
+// Formula:
+//   segLen  = (count / total) * CIRCUMFERENCE
+//   dasharray  = "segLen  (CIRCUMFERENCE - segLen)"
+//   dashoffset = -cumulativeOffset   (negative = push segment forward)
+
+function renderDonutChart(counts, total) {
+  const svg = document.getElementById('scoreChart');
+  svg.innerHTML = '';
+
+  // Background ring (dark fill)
+  svg.appendChild(svgEl('circle', {
+    cx: 100, cy: 100, r: 70,
+    fill: 'none',
+    stroke: '#0d0d2e',
+    'stroke-width': 20,
+  }));
+
+  // Thin guide rings
+  svg.appendChild(svgEl('circle', {
+    cx: 100, cy: 100, r: 81,
+    fill: 'none',
+    stroke: '#141440',
+    'stroke-width': 0.5,
+  }));
+  svg.appendChild(svgEl('circle', {
+    cx: 100, cy: 100, r: 58,
+    fill: 'none',
+    stroke: '#141440',
+    'stroke-width': 0.5,
+  }));
+
+  if (total === 0) return;
+
+  let cumulative = 0;
+
+  ACTIVITIES.forEach((act, i) => {
+    const count = counts[i] || 0;
+    if (count === 0) return;
+
+    const segLen  = (count / total) * CIRCUMFERENCE;
+    // Small visual gap between adjacent segments (skip for tiny segments)
+    const gap     = segLen > 6 ? 3 : 0;
+    const drawLen = Math.max(0, segLen - gap);
+
+    const circle = svgEl('circle', {
+      cx: 100,
+      cy: 100,
+      r:  70,
+      fill:              'none',
+      stroke:            act.color,
+      'stroke-width':    18,
+      'stroke-dasharray':  `${drawLen} ${CIRCUMFERENCE - drawLen}`,
+      'stroke-dashoffset': `${-cumulative}`,
+      transform:         'rotate(-90 100 100)',
+    });
+
+    circle.style.filter = `drop-shadow(0 0 5px ${act.color})`;
+    svg.appendChild(circle);
+
+    cumulative += segLen;
+  });
+}
+
+
+// ── RENDER: SCORE LEGEND ───────────────────────────────────────────────────────
+
+function renderLegend(counts, total) {
+  const list = document.getElementById('scoreLegend');
+  list.innerHTML = '';
+
+  ACTIVITIES.forEach((act, i) => {
+    const count = counts[i] || 0;
+    const pct   = total > 0 ? Math.round((count / total) * 100) : 0;
+
+    const li = document.createElement('li');
+    li.className = 'legend-item';
+    li.innerHTML = `
+      <span class="legend-dot"
+            style="background:${act.color};box-shadow:0 0 6px ${act.color}">
+      </span>
+      <span class="legend-name" style="color:${act.color}">${act.line1} ${act.line2}</span>
+      <span class="legend-count">${count}×</span>
+      <span class="legend-pct"
+            style="color:${act.color};text-shadow:0 0 8px rgba(${act.rgb},0.65)">
+        ${pct}%
+      </span>`;
+    list.appendChild(li);
+  });
+}
+
+
+// ── RENDER: ACTIVITY BUTTONS ───────────────────────────────────────────────────
+
+function renderButtons(todayActivity) {
+  const grid     = document.getElementById('buttonsGrid');
+  const msgEl    = document.getElementById('lockedMessage');
+  const lockText = document.getElementById('lockText');
+  const isLocked = todayActivity !== null;
+
+  grid.innerHTML = '';
+
+  ACTIVITIES.forEach((act, i) => {
+    const isSelected = (i === todayActivity);
+    const isDisabled = isLocked && !isSelected;
+
+    const btn = document.createElement('button');
+    btn.className = [
+      'activity-btn',
+      isSelected ? 'selected' : '',
+      isDisabled  ? 'disabled'  : '',
+    ].filter(Boolean).join(' ');
+
+    // Inject CSS custom properties so CSS can build rgba() glows
+    btn.style.setProperty('--btn-color', act.color);
+    btn.style.setProperty('--btn-rgb',   act.rgb);
+
+    btn.type = 'button';
+    btn.disabled = isDisabled;
+    btn.setAttribute('aria-label',   `${act.line1} ${act.line2}`);
+    btn.setAttribute('aria-pressed',  isSelected ? 'true' : 'false');
+
+    btn.innerHTML = `
+      <span class="btn-icon" aria-hidden="true">${act.icon}</span>
+      <span class="btn-name">${act.line1}</span>
+      <span class="btn-sub">${act.line2}</span>`;
+
+    if (!isLocked) {
+      btn.addEventListener('click', () => handleActivityClick(i));
+    }
+
+    grid.appendChild(btn);
+  });
+
+  // Locked banner
+  if (isLocked) {
+    const act = ACTIVITIES[todayActivity];
+    lockText.textContent       = `ZÁZNAM ULOŽEN: ${act.line1} ${act.line2}`;
+    msgEl.style.display        = 'flex';
+    msgEl.style.color          = act.color;
+    msgEl.style.borderColor    = act.color;
+    msgEl.style.boxShadow      = `0 0 14px rgba(${act.rgb},0.45)`;
+    msgEl.style.textShadow     = `0 0 8px rgba(${act.rgb},0.8)`;
+  } else {
+    msgEl.style.display = 'none';
+  }
+}
+
+
+// ── RENDER: CALENDAR ───────────────────────────────────────────────────────────
+
+let calViewDate = new Date();   // tracks which month is displayed
+
+function renderCalendar(data) {
+  const year  = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+
+  // Month title
+  const monthStr = new Date(year, month, 1)
+    .toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' })
+    .toUpperCase();
+  document.getElementById('calendarTitle').textContent = monthStr;
+
+  const grid     = document.getElementById('calendarGrid');
+  const todayKey = getDateKey();
+
+  grid.innerHTML = '';
+
+  // Day-of-week of the 1st: convert Sunday=0 → Monday=0 system
+  const firstDow    = new Date(year, month, 1).getDay();
+  const startOffset = (firstDow + 6) % 7;   // 0=Mon … 6=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Empty leading cells
+  for (let i = 0; i < startOffset; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    empty.setAttribute('aria-hidden', 'true');
+    grid.appendChild(empty);
+  }
+
+  // Day cells
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateKey  = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const actIdx   = data[dateKey];
+    const isToday  = dateKey === todayKey;
+    const hasRec   = actIdx !== undefined;
+
+    const cell = document.createElement('div');
+    cell.className = [
+      'cal-day',
+      isToday ? 'today'    : '',
+      hasRec  ? 'recorded' : '',
+    ].filter(Boolean).join(' ');
+
+    cell.setAttribute('role', 'gridcell');
+    cell.textContent = d;
+
+    if (hasRec) {
+      const act = ACTIVITIES[actIdx];
+      cell.style.background  = `rgba(${act.rgb}, 0.15)`;
+      cell.style.borderColor = act.color;
+      cell.style.color       = act.color;
+      cell.style.boxShadow   = `0 0 8px rgba(${act.rgb},0.35), inset 0 0 8px rgba(${act.rgb},0.1)`;
+      cell.setAttribute('title',      `${act.line1} ${act.line2}`);
+      cell.setAttribute('aria-label', `${d}. – ${act.line1} ${act.line2}`);
+    } else {
+      cell.setAttribute('aria-label', String(d));
+    }
+
+    grid.appendChild(cell);
+  }
+}
+
+
+// ── EVENT HANDLERS ─────────────────────────────────────────────────────────────
+
+function handleActivityClick(index) {
+  // Guard: reload data fresh to prevent double-writes
+  if (getTodayActivity(loadData()) !== null) return;
+  recordActivity(index);
+  refreshAll();
+}
+
+document.getElementById('prevMonth').addEventListener('click', () => {
+  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() - 1, 1);
+  renderCalendar(loadData());
+});
+
+document.getElementById('nextMonth').addEventListener('click', () => {
+  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() + 1, 1);
+  renderCalendar(loadData());
+});
+
+
+// ── RESET TODAY ────────────────────────────────────────────────────────────────
+// Two-step confirmation: first click → warn, second click → delete today's record.
+
+let resetPending = false;
+let resetTimer   = null;
+
+function initResetButton() {
+  const btn = document.getElementById('resetTodayBtn');
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
+    if (!resetPending) {
+      // Step 1: arm
+      resetPending        = true;
+      btn.textContent     = '⚠ POTVRDIT RESET';
+      btn.classList.add('armed');
+
+      // Auto-revert after 3 s
+      resetTimer = setTimeout(() => {
+        resetPending    = false;
+        btn.textContent = '↺ RESET DNE';
+        btn.classList.remove('armed');
+      }, 3000);
+    } else {
+      // Step 2: execute
+      clearTimeout(resetTimer);
+      resetPending = false;
+
+      const data = loadData();
+      delete data[getDateKey()];
+      saveData(data);
+
+      btn.textContent = '✓ RESET PROVEDEN';
+      btn.classList.remove('armed');
+      btn.classList.add('done');
+
+      setTimeout(() => {
+        btn.textContent = '↺ RESET DNE';
+        btn.classList.remove('done');
+        refreshAll();
+      }, 1200);
+    }
+  });
+}
+
+
+// ── MAIN REFRESH ───────────────────────────────────────────────────────────────
+
+function refreshAll() {
+  const data          = loadData();
+  const todayActivity = getTodayActivity(data);
+  const counts        = calculateCounts(data);
+  const total         = counts.reduce((a, b) => a + b, 0);
+
+  renderDate();
+  renderDonutChart(counts, total);
+  renderLegend(counts, total);
+  renderButtons(todayActivity);
+  renderCalendar(data);
+
+  document.getElementById('totalCount').textContent = total;
+}
+
+
+// ── SERVICE WORKER REGISTRATION ────────────────────────────────────────────────
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('./sw.js')
+      .then(reg => console.log('[NightLog] SW registered, scope:', reg.scope))
+      .catch(err => console.warn('[NightLog] SW registration failed:', err));
+  });
+}
+
+
+// ── INIT ───────────────────────────────────────────────────────────────────────
+
+refreshAll();
+initResetButton();
