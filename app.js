@@ -65,6 +65,9 @@ const ACTIVITIES = [
 const STORAGE_KEY  = 'nightlog_v1';
 const CIRCUMFERENCE = 2 * Math.PI * 70; // SVG donut radius = 70
 
+// In-memory pending selection (not yet saved to localStorage)
+let pendingSelections = [];
+
 
 // ── DATA LAYER ─────────────────────────────────────────────────────────────────
 
@@ -265,23 +268,31 @@ function renderLegend(counts, total) {
 
 // ── RENDER: ACTIVITY BUTTONS ───────────────────────────────────────────────────
 
-function renderButtons(selections) {
+function renderButtons(savedSelections, isSaved) {
   const grid     = document.getElementById('buttonsGrid');
   const msgEl    = document.getElementById('lockedMessage');
   const lockText = document.getElementById('lockText');
+  const saveBar  = document.getElementById('saveBar');
+  const saveBtn  = document.getElementById('saveBtn');
 
-  const count14 = selections.filter(i => i < 4).length;
-  const has14   = count14 > 0;
-  const has56   = selections.some(i => i >= 4);
+  // What to display: saved state or current pending state
+  const displaySelections = isSaved ? savedSelections : pendingSelections;
+
+  // Rules are checked against pendingSelections (only matters before saving)
+  const count14 = pendingSelections.filter(i => i < 4).length;
+  const has14   = pendingSelections.some(i => i < 4);
+  const has56   = pendingSelections.some(i => i >= 4);
 
   grid.innerHTML = '';
 
   ACTIVITIES.forEach((act, i) => {
-    const isSelected = selections.includes(i);
+    const isSelected = displaySelections.includes(i);
 
-    // Determine if this button is blocked
     let isDisabled;
-    if (i < 4) {
+    if (isSaved) {
+      // After saving: only the saved buttons remain active, rest are greyed out
+      isDisabled = !isSelected;
+    } else if (i < 4) {
       isDisabled = !isSelected && (count14 >= 2 || has56);
     } else {
       isDisabled = !isSelected && (has14 || has56);
@@ -307,17 +318,25 @@ function renderButtons(selections) {
       <span class="btn-name">${act.line1}</span>
       <span class="btn-sub">${act.line2}</span>`;
 
-    if (!isDisabled && !isSelected) {
-      btn.addEventListener('click', () => handleActivityClick(i));
+    // Before saving: clicking toggles pending selection
+    if (!isSaved && !isDisabled) {
+      btn.addEventListener('click', () => handleActivityToggle(i));
     }
 
     grid.appendChild(btn);
   });
 
-  // Locked banner – shown as soon as any selection is made
-  if (selections.length > 0) {
-    const firstAct = ACTIVITIES[selections[0]];
-    const names    = selections
+  // Save bar – visible only when day not yet saved
+  if (saveBar) saveBar.style.display = isSaved ? 'none' : 'flex';
+  if (saveBtn) {
+    saveBtn.disabled = pendingSelections.length === 0;
+    saveBtn.classList.toggle('ready', pendingSelections.length > 0);
+  }
+
+  // Locked message – shown only after saving
+  if (isSaved && savedSelections.length > 0) {
+    const firstAct = ACTIVITIES[savedSelections[0]];
+    const names    = savedSelections
       .map(i => `${ACTIVITIES[i].line1} ${ACTIVITIES[i].line2}`)
       .join('  +  ');
     lockText.textContent    = `ULOŽENO: ${names}`;
@@ -413,19 +432,45 @@ function renderCalendar(data) {
 
 // ── EVENT HANDLERS ─────────────────────────────────────────────────────────────
 
-function handleActivityClick(index) {
-  addSelection(index);
-  refreshAll();
+function handleActivityToggle(index) {
+  if (pendingSelections.includes(index)) {
+    pendingSelections = pendingSelections.filter(i => i !== index);
+  } else {
+    const has14   = pendingSelections.some(i => i < 4);
+    const has56   = pendingSelections.some(i => i >= 4);
+    const count14 = pendingSelections.filter(i => i < 4).length;
+    if (index < 4 && (count14 >= 2 || has56)) return;
+    if (index >= 4 && (has14 || has56))        return;
+    pendingSelections = [...pendingSelections, index];
+  }
+  const data    = loadData();
+  const isSaved = data[getDateKey()] !== undefined;
+  renderButtons(getTodaySelections(data), isSaved);
 }
 
-document.getElementById('prevMonth').addEventListener('click', () => {
+function initSaveButton() {
+  const btn = document.getElementById('saveBtn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (pendingSelections.length === 0) return;
+    const data = loadData();
+    data[getDateKey()] = [...pendingSelections];
+    saveData(data);
+    pendingSelections = [];
+    refreshAll();
+  });
+}
+
+document.getElementById('prevMonth').addEventListener('click', (e) => {
   calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() - 1, 1);
   renderCalendar(loadData());
+  e.currentTarget.blur();
 });
 
-document.getElementById('nextMonth').addEventListener('click', () => {
+document.getElementById('nextMonth').addEventListener('click', (e) => {
   calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() + 1, 1);
   renderCalendar(loadData());
+  e.currentTarget.blur();
 });
 
 
@@ -460,6 +505,7 @@ function initResetButton() {
       const data = loadData();
       delete data[getDateKey()];
       saveData(data);
+      pendingSelections = [];
 
       btn.textContent = '✓ RESET PROVEDEN';
       btn.classList.remove('armed');
@@ -478,15 +524,16 @@ function initResetButton() {
 // ── MAIN REFRESH ───────────────────────────────────────────────────────────────
 
 function refreshAll() {
-  const data       = loadData();
-  const selections = getTodaySelections(data);
-  const counts     = calculateCounts(data);
-  const total      = counts.reduce((a, b) => a + b, 0);
+  const data           = loadData();
+  const savedSelections = getTodaySelections(data);
+  const isSaved        = data[getDateKey()] !== undefined;
+  const counts         = calculateCounts(data);
+  const total          = counts.reduce((a, b) => a + b, 0);
 
   renderDate();
   renderDonutChart(counts, total);
   renderLegend(counts, total);
-  renderButtons(selections);
+  renderButtons(savedSelections, isSaved);
   renderCalendar(data);
 
   document.getElementById('totalCount').textContent = total;
@@ -515,3 +562,4 @@ if ('serviceWorker' in navigator) {
 
 refreshAll();
 initResetButton();
+initSaveButton();
