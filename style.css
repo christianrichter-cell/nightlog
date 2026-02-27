@@ -335,9 +335,9 @@ body::before {
   min-height: 90px;
   padding: 0.9rem 0.75rem;
 
-  background: transparent;
+  background: rgba(var(--btn-rgb), 0.07);
   border: 1px solid var(--btn-color);
-  border-radius: var(--radius);
+  border-radius: 12px;
   color: var(--btn-color);
   cursor: pointer;
 
@@ -347,7 +347,7 @@ body::before {
 
   box-shadow:
     0 0 8px  rgba(var(--btn-rgb), 0.2),
-    inset 0 0 10px rgba(var(--btn-rgb), 0.04);
+    inset 0 0 18px rgba(var(--btn-rgb), 0.12);
   transition: box-shadow 0.25s ease, transform 0.15s ease, filter 0.25s ease;
 
   -webkit-tap-highlight-color: transparent;
