@@ -305,7 +305,7 @@ function renderCalendar(data) {
 
   // Month title
   const monthStr = new Date(year, month, 1)
-    .toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' })
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     .toUpperCase();
   document.getElementById('calendarTitle').textContent = monthStr;
 
