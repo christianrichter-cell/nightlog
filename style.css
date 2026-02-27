@@ -32,8 +32,8 @@
   --radius:  3px;
 
   /* Typography */
-  --font-head: 'Orbitron', 'Courier New', monospace;
-  --font-mono: 'Share Tech Mono', 'Courier New', monospace;
+  --font-head: 'Exo 2', 'Courier New', monospace;
+  --font-mono: 'Exo 2', 'Courier New', monospace;
 }
 
 html {
