@@ -518,6 +518,13 @@ function renderDayEditor() {
   });
 
   if (saveBtn) saveBtn.classList.toggle('ready', editingPending.length > 0);
+
+  // Show delete button only when the day already has a saved record
+  const deleteBtn = document.getElementById('dayModalDelete');
+  if (deleteBtn) {
+    const hasRecord = loadData()[editingDate] !== undefined;
+    deleteBtn.style.display = hasRecord ? '' : 'none';
+  }
 }
 
 function handleDayEditorToggle(index) {
@@ -547,10 +554,20 @@ function saveDayEditor() {
   refreshAll();
 }
 
+function deleteDayEditor() {
+  if (!editingDate) return;
+  const data = loadData();
+  delete data[editingDate];
+  saveData(data);
+  closeDayEditor();
+  refreshAll();
+}
+
 function initDayEditor() {
   document.getElementById('dayModalClose') .addEventListener('click', closeDayEditor);
   document.getElementById('dayModalCancel').addEventListener('click', closeDayEditor);
   document.getElementById('dayModalSave')  .addEventListener('click', saveDayEditor);
+  document.getElementById('dayModalDelete').addEventListener('click', deleteDayEditor);
   // Close on backdrop click
   document.getElementById('dayModalOverlay').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeDayEditor();
