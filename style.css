@@ -316,7 +316,7 @@ body::before {
 .section-label {
   font-size: 0.6rem;
   letter-spacing: 0.18em;
-  color: var(--text-dim);
+  color: var(--text);
   text-align: center;
 }
 
