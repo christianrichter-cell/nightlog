@@ -538,10 +538,12 @@ body::before {
   line-height: 1;
 }
 
-.cal-nav-btn:hover {
-  border-color: var(--c1);
-  color: var(--c1);
-  box-shadow: 0 0 8px rgba(0, 229, 255, 0.35);
+@media (hover: hover) and (pointer: fine) {
+  .cal-nav-btn:hover {
+    border-color: var(--c1);
+    color: var(--c1);
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.35);
+  }
 }
 
 /* Weekday labels */
