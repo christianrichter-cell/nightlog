@@ -217,6 +217,10 @@ body::before {
   overflow: visible;
 }
 
+#scoreChart .segment {
+  transition: stroke-dasharray 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .chart-center {
   position: absolute;
   inset: 0;
@@ -265,6 +269,12 @@ body::before {
   align-items: center;
   gap: 0.4rem;
   overflow: hidden;
+  transition: filter 0.2s ease;
+  cursor: default;
+}
+
+.legend-item:hover {
+  filter: brightness(1.6);
 }
 
 .legend-dot {

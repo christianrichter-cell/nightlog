@@ -216,13 +216,20 @@ function renderDonutChart(counts, total) {
       fill:              'none',
       stroke:            act.color,
       'stroke-width':    18,
-      'stroke-dasharray':  `${drawLen} ${CIRCUMFERENCE - drawLen}`,
+      'stroke-dasharray':  `0 ${CIRCUMFERENCE}`,
       'stroke-dashoffset': `${-cumulative}`,
       transform:         'rotate(-90 100 100)',
+      class:             'segment',
     });
 
     circle.style.filter = `drop-shadow(0 0 5px ${act.color})`;
     svg.appendChild(circle);
+
+    // Animate segment to its final length after the browser paints the initial state
+    const finalDasharray = `${drawLen} ${CIRCUMFERENCE - drawLen}`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      circle.setAttribute('stroke-dasharray', finalDasharray);
+    }));
 
     cumulative += segLen;
   });
