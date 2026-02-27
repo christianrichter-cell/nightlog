@@ -492,7 +492,13 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('./sw.js')
-      .then(reg => console.log('[NightLog] SW registered, scope:', reg.scope))
+      .then(reg => {
+        console.log('[NightLog] SW registered, scope:', reg.scope);
+        // Zkontroluje update při každém příchodu do popředí (klíčové pro iOS PWA)
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) reg.update();
+        });
+      })
       .catch(err => console.warn('[NightLog] SW registration failed:', err));
   });
 }
