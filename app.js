@@ -92,31 +92,49 @@ function getDateKey(date = new Date()) {
 }
 
 /**
- * Returns the activity index recorded today, or null if none.
+ * Returns array of selected indices for today (e.g. [0, 2]).
+ * Handles old single-int format for backward compatibility.
  */
-function getTodayActivity(data) {
+function getTodaySelections(data) {
   const val = data[getDateKey()];
-  return (val !== undefined) ? val : null;
+  if (val === undefined || val === null) return [];
+  return Array.isArray(val) ? val : [val];
 }
 
 /**
- * Saves today's activity. Does nothing if today is already logged.
+ * Adds a selection for today. Enforces rules:
+ *   - Buttons 0–3 (individual): max 2 per day, blocked if OBA selected
+ *   - Buttons 4–5 (OBA): max 1 per day, blocked if individual selected
  */
-function recordActivity(index) {
-  const data = loadData();
-  if (getTodayActivity(data) !== null) return;
-  data[getDateKey()] = index;
+function addSelection(index) {
+  const data       = loadData();
+  const selections = getTodaySelections(data);
+
+  if (selections.includes(index)) return;
+
+  const has14  = selections.some(i => i < 4);
+  const has56  = selections.some(i => i >= 4);
+  const count14 = selections.filter(i => i < 4).length;
+
+  if (index < 4 && (count14 >= 2 || has56)) return;
+  if (index >= 4 && (has14 || has56))        return;
+
+  data[getDateKey()] = [...selections, index];
   saveData(data);
 }
 
 /**
  * Returns an array of counts [count0, count1, …] per activity.
+ * Handles both old (single int) and new (array) data format.
  */
 function calculateCounts(data) {
   const counts = new Array(ACTIVITIES.length).fill(0);
   for (const val of Object.values(data)) {
-    if (Number.isInteger(val) && val >= 0 && val < ACTIVITIES.length) {
-      counts[val]++;
+    const indices = Array.isArray(val) ? val : [val];
+    for (const idx of indices) {
+      if (Number.isInteger(idx) && idx >= 0 && idx < ACTIVITIES.length) {
+        counts[idx]++;
+      }
     }
   }
   return counts;
@@ -240,17 +258,27 @@ function renderLegend(counts, total) {
 
 // ── RENDER: ACTIVITY BUTTONS ───────────────────────────────────────────────────
 
-function renderButtons(todayActivity) {
+function renderButtons(selections) {
   const grid     = document.getElementById('buttonsGrid');
   const msgEl    = document.getElementById('lockedMessage');
   const lockText = document.getElementById('lockText');
-  const isLocked = todayActivity !== null;
+
+  const count14 = selections.filter(i => i < 4).length;
+  const has14   = count14 > 0;
+  const has56   = selections.some(i => i >= 4);
 
   grid.innerHTML = '';
 
   ACTIVITIES.forEach((act, i) => {
-    const isSelected = (i === todayActivity);
-    const isDisabled = isLocked && !isSelected;
+    const isSelected = selections.includes(i);
+
+    // Determine if this button is blocked
+    let isDisabled;
+    if (i < 4) {
+      isDisabled = !isSelected && (count14 >= 2 || has56);
+    } else {
+      isDisabled = !isSelected && (has14 || has56);
+    }
 
     const btn = document.createElement('button');
     btn.className = [
@@ -259,36 +287,38 @@ function renderButtons(todayActivity) {
       isDisabled  ? 'disabled'  : '',
     ].filter(Boolean).join(' ');
 
-    // Inject CSS custom properties so CSS can build rgba() glows
     btn.style.setProperty('--btn-color', act.color);
     btn.style.setProperty('--btn-rgb',   act.rgb);
 
     btn.type = 'button';
     btn.disabled = isDisabled;
-    btn.setAttribute('aria-label',   `${act.line1} ${act.line2}`);
-    btn.setAttribute('aria-pressed',  isSelected ? 'true' : 'false');
+    btn.setAttribute('aria-label',  `${act.line1} ${act.line2}`);
+    btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
 
     btn.innerHTML = `
       <span class="btn-icon" aria-hidden="true">${act.icon}</span>
       <span class="btn-name">${act.line1}</span>
       <span class="btn-sub">${act.line2}</span>`;
 
-    if (!isLocked) {
+    if (!isDisabled && !isSelected) {
       btn.addEventListener('click', () => handleActivityClick(i));
     }
 
     grid.appendChild(btn);
   });
 
-  // Locked banner
-  if (isLocked) {
-    const act = ACTIVITIES[todayActivity];
-    lockText.textContent       = `ZÁZNAM ULOŽEN: ${act.line1} ${act.line2}`;
-    msgEl.style.display        = 'flex';
-    msgEl.style.color          = act.color;
-    msgEl.style.borderColor    = act.color;
-    msgEl.style.boxShadow      = `0 0 14px rgba(${act.rgb},0.45)`;
-    msgEl.style.textShadow     = `0 0 8px rgba(${act.rgb},0.8)`;
+  // Locked banner – shown as soon as any selection is made
+  if (selections.length > 0) {
+    const firstAct = ACTIVITIES[selections[0]];
+    const names    = selections
+      .map(i => `${ACTIVITIES[i].line1} ${ACTIVITIES[i].line2}`)
+      .join('  +  ');
+    lockText.textContent    = `ULOŽENO: ${names}`;
+    msgEl.style.display     = 'flex';
+    msgEl.style.color       = firstAct.color;
+    msgEl.style.borderColor = firstAct.color;
+    msgEl.style.boxShadow   = `0 0 14px rgba(${firstAct.rgb},0.45)`;
+    msgEl.style.textShadow  = `0 0 8px rgba(${firstAct.rgb},0.8)`;
   } else {
     msgEl.style.display = 'none';
   }
@@ -345,13 +375,26 @@ function renderCalendar(data) {
     cell.textContent = d;
 
     if (hasRec) {
-      const act = ACTIVITIES[actIdx];
-      cell.style.background  = `rgba(${act.rgb}, 0.15)`;
-      cell.style.borderColor = act.color;
-      cell.style.color       = act.color;
-      cell.style.boxShadow   = `0 0 8px rgba(${act.rgb},0.35), inset 0 0 8px rgba(${act.rgb},0.1)`;
-      cell.setAttribute('title',      `${act.line1} ${act.line2}`);
-      cell.setAttribute('aria-label', `${d}. – ${act.line1} ${act.line2}`);
+      // Normalize to array (handles old single-int format)
+      const indices = Array.isArray(actIdx) ? actIdx : [actIdx];
+      const act  = ACTIVITIES[indices[0]];
+      const act2 = indices[1] !== undefined ? ACTIVITIES[indices[1]] : null;
+
+      if (act2) {
+        // Two activities: diagonal split background
+        cell.style.background  = `linear-gradient(135deg, rgba(${act.rgb},0.22) 50%, rgba(${act2.rgb},0.22) 50%)`;
+        cell.style.borderColor = act.color;
+        cell.style.boxShadow   = `0 0 8px rgba(${act.rgb},0.3), inset 0 0 6px rgba(${act2.rgb},0.15)`;
+        cell.style.color       = act.color;
+      } else {
+        cell.style.background  = `rgba(${act.rgb}, 0.15)`;
+        cell.style.borderColor = act.color;
+        cell.style.color       = act.color;
+        cell.style.boxShadow   = `0 0 8px rgba(${act.rgb},0.35), inset 0 0 8px rgba(${act.rgb},0.1)`;
+      }
+      const label = indices.map(i => `${ACTIVITIES[i].line1} ${ACTIVITIES[i].line2}`).join(' + ');
+      cell.setAttribute('title',      label);
+      cell.setAttribute('aria-label', `${d}. – ${label}`);
     } else {
       cell.setAttribute('aria-label', String(d));
     }
@@ -364,9 +407,7 @@ function renderCalendar(data) {
 // ── EVENT HANDLERS ─────────────────────────────────────────────────────────────
 
 function handleActivityClick(index) {
-  // Guard: reload data fresh to prevent double-writes
-  if (getTodayActivity(loadData()) !== null) return;
-  recordActivity(index);
+  addSelection(index);
   refreshAll();
 }
 
@@ -430,15 +471,15 @@ function initResetButton() {
 // ── MAIN REFRESH ───────────────────────────────────────────────────────────────
 
 function refreshAll() {
-  const data          = loadData();
-  const todayActivity = getTodayActivity(data);
-  const counts        = calculateCounts(data);
-  const total         = counts.reduce((a, b) => a + b, 0);
+  const data       = loadData();
+  const selections = getTodaySelections(data);
+  const counts     = calculateCounts(data);
+  const total      = counts.reduce((a, b) => a + b, 0);
 
   renderDate();
   renderDonutChart(counts, total);
   renderLegend(counts, total);
-  renderButtons(todayActivity);
+  renderButtons(selections);
   renderCalendar(data);
 
   document.getElementById('totalCount').textContent = total;
