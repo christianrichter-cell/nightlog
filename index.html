@@ -128,6 +128,24 @@
 
   </div><!-- /.container -->
 
+  <!-- ═══ DAY EDITOR MODAL ═══ -->
+  <div class="day-modal-overlay" id="dayModalOverlay" aria-hidden="true">
+    <div class="day-modal" role="dialog" aria-modal="true" aria-labelledby="dayModalDate">
+      <div class="day-modal-header">
+        <span class="day-modal-date" id="dayModalDate"></span>
+        <button class="day-modal-close" id="dayModalClose" type="button" aria-label="Zavřít">✕</button>
+      </div>
+      <div class="section-label">&gt;&gt; UPRAVIT DEN &lt;&lt;</div>
+      <div class="buttons-grid" id="dayModalGrid" role="group" aria-label="Aktivity pro vybraný den">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="day-modal-actions">
+        <button class="day-cancel-btn" id="dayModalCancel" type="button">ZRUŠIT</button>
+        <button class="save-btn" id="dayModalSave" type="button">✦ ULOŽIT</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

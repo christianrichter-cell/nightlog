@@ -388,13 +388,15 @@ function renderCalendar(data) {
     const dateKey  = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const actIdx   = data[dateKey];
     const isToday  = dateKey === todayKey;
+    const isPast   = dateKey <= todayKey;   // includes today
     const hasRec   = actIdx !== undefined;
 
     const cell = document.createElement('div');
     cell.className = [
       'cal-day',
-      isToday ? 'today'    : '',
-      hasRec  ? 'recorded' : '',
+      isToday ? 'today'      : '',
+      hasRec  ? 'recorded'   : '',
+      isPast  ? 'past-day'   : 'future-day',
     ].filter(Boolean).join(' ');
 
     cell.setAttribute('role', 'gridcell');
@@ -425,8 +427,134 @@ function renderCalendar(data) {
       cell.setAttribute('aria-label', String(d));
     }
 
+    // Past + today days are clickable for editing
+    if (isPast) {
+      cell.addEventListener('click', () => openDayEditor(dateKey));
+    }
+
     grid.appendChild(cell);
   }
+}
+
+
+// ── DAY EDITOR ─────────────────────────────────────────────────────────────────
+
+let editingDate    = null;
+let editingPending = [];
+
+function openDayEditor(dateKey) {
+  editingDate = dateKey;
+  const data  = loadData();
+  const existing = data[dateKey];
+  editingPending = existing !== undefined
+    ? (Array.isArray(existing) ? [...existing] : [existing])
+    : [];
+
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dateStr = new Date(y, m - 1, d)
+    .toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    .toUpperCase();
+  document.getElementById('dayModalDate').textContent = `// ${dateStr} //`;
+
+  renderDayEditor();
+
+  const overlay = document.getElementById('dayModalOverlay');
+  overlay.setAttribute('aria-hidden', 'false');
+  overlay.classList.add('open');
+}
+
+function closeDayEditor() {
+  editingDate    = null;
+  editingPending = [];
+  const overlay  = document.getElementById('dayModalOverlay');
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+function renderDayEditor() {
+  const grid    = document.getElementById('dayModalGrid');
+  const saveBtn = document.getElementById('dayModalSave');
+
+  const count14 = editingPending.filter(i => i < 4).length;
+  const has14   = editingPending.some(i => i < 4);
+  const has56   = editingPending.some(i => i >= 4);
+
+  grid.innerHTML = '';
+
+  ACTIVITIES.forEach((act, i) => {
+    const isSelected = editingPending.includes(i);
+
+    let isDisabled;
+    if (i < 4) {
+      isDisabled = !isSelected && (count14 >= 2 || has56);
+    } else {
+      isDisabled = !isSelected && (has14 || has56);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = [
+      'activity-btn',
+      isSelected ? 'selected' : '',
+      isDisabled  ? 'disabled'  : '',
+    ].filter(Boolean).join(' ');
+
+    btn.style.setProperty('--btn-color', act.color);
+    btn.style.setProperty('--btn-rgb',   act.rgb);
+    btn.type = 'button';
+    btn.disabled = isDisabled;
+    btn.setAttribute('aria-label',  `${act.line1} ${act.line2}`);
+    btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+
+    btn.innerHTML = `
+      <span class="btn-icon" aria-hidden="true">${act.icon}</span>
+      <span class="btn-name">${act.line1}</span>
+      <span class="btn-sub">${act.line2}</span>`;
+
+    if (!isDisabled) {
+      btn.addEventListener('click', () => handleDayEditorToggle(i));
+    }
+
+    grid.appendChild(btn);
+  });
+
+  if (saveBtn) saveBtn.classList.toggle('ready', editingPending.length > 0);
+}
+
+function handleDayEditorToggle(index) {
+  if (editingPending.includes(index)) {
+    editingPending = editingPending.filter(i => i !== index);
+  } else {
+    const has14   = editingPending.some(i => i < 4);
+    const has56   = editingPending.some(i => i >= 4);
+    const count14 = editingPending.filter(i => i < 4).length;
+    if (index < 4 && (count14 >= 2 || has56)) return;
+    if (index >= 4 && (has14 || has56))        return;
+    editingPending = [...editingPending, index];
+  }
+  renderDayEditor();
+}
+
+function saveDayEditor() {
+  if (!editingDate) return;
+  const data = loadData();
+  if (editingPending.length > 0) {
+    data[editingDate] = [...editingPending];
+  } else {
+    delete data[editingDate];
+  }
+  saveData(data);
+  closeDayEditor();
+  refreshAll();
+}
+
+function initDayEditor() {
+  document.getElementById('dayModalClose') .addEventListener('click', closeDayEditor);
+  document.getElementById('dayModalCancel').addEventListener('click', closeDayEditor);
+  document.getElementById('dayModalSave')  .addEventListener('click', saveDayEditor);
+  // Close on backdrop click
+  document.getElementById('dayModalOverlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeDayEditor();
+  });
 }
 
 
@@ -563,3 +691,4 @@ if ('serviceWorker' in navigator) {
 refreshAll();
 initResetButton();
 initSaveButton();
+initDayEditor();
