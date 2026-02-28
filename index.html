@@ -28,6 +28,37 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <!-- ═══ PIN OVERLAY ═══ -->
+  <div class="pin-overlay" id="pinOverlay" role="dialog" aria-modal="true" aria-label="Ověření přístupu">
+    <div class="pin-box">
+      <div class="pin-title">
+        <span class="pin-title-slash" aria-hidden="true">//</span>
+        <span class="pin-title-text">PŘÍSTUP</span>
+        <span class="pin-title-slash" aria-hidden="true">//</span>
+      </div>
+      <p class="pin-subtitle">ZADEJTE KÓD</p>
+      <div class="pin-digits" id="pinDigits" role="group" aria-label="Číslice PINu">
+        <input class="pin-digit" type="tel" inputmode="numeric" maxlength="1" pattern="[0-9]" autocomplete="off" aria-label="Číslice 1" />
+        <input class="pin-digit" type="tel" inputmode="numeric" maxlength="1" pattern="[0-9]" autocomplete="off" aria-label="Číslice 2" />
+        <input class="pin-digit" type="tel" inputmode="numeric" maxlength="1" pattern="[0-9]" autocomplete="off" aria-label="Číslice 3" />
+        <input class="pin-digit" type="tel" inputmode="numeric" maxlength="1" pattern="[0-9]" autocomplete="off" aria-label="Číslice 4" />
+        <input class="pin-digit" type="tel" inputmode="numeric" maxlength="1" pattern="[0-9]" autocomplete="off" aria-label="Číslice 5" />
+        <input class="pin-digit" type="tel" inputmode="numeric" maxlength="1" pattern="[0-9]" autocomplete="off" aria-label="Číslice 6" />
+      </div>
+      <p class="pin-error" id="pinError" aria-live="assertive"></p>
+    </div>
+  </div>
+
+  <!-- ═══ LOADING OVERLAY ═══ -->
+  <div class="loading-overlay" id="loadingOverlay" aria-hidden="true" role="status" aria-label="Načítání dat">
+    <div class="loading-box">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p class="loading-text">SYNCHRONIZACE DAT</p>
+      <p class="loading-sub" id="loadingStatus">PŘIPOJOVÁNÍ KE GIST...</p>
+    </div>
+  </div>
+
   <!-- CRT overlay -->
   <div class="scanlines" aria-hidden="true"></div>
 

@@ -63,25 +63,209 @@ const ACTIVITIES = [
 ];
 
 const STORAGE_KEY  = 'nightlog_v1';
+const GIST_ID      = '5e7f9f71bdcdf0e5c9a8cba664452624';
+const GIST_PAT     = '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';
+const GIST_FILE    = 'nightlog-data.json';
+const PIN_HASH     = '3e69f85e28228b9a23edc17f6742074bba4e6ea715344fa73eecb9246540b814';
+const SESSION_KEY  = 'nightlog_pin_ok';
 const CIRCUMFERENCE = 2 * Math.PI * 70; // SVG donut radius = 70
 
-// In-memory pending selection (not yet saved to localStorage)
+// In-memory cache – populated at startup from Gist (or localStorage fallback).
+// loadData() and saveData() operate on this exclusively after startup.
+let _memCache = null;
+
+// In-memory pending selection (not yet saved)
 let pendingSelections = [];
 
 
 // ── DATA LAYER ─────────────────────────────────────────────────────────────────
 
+/**
+ * Synchronous read from in-memory cache.
+ * Returns a shallow copy so callers can't corrupt the cache by mutation.
+ */
 function loadData() {
+  return _memCache ? { ..._memCache } : {};
+}
+
+/**
+ * Synchronous write:
+ *   1. Updates in-memory cache immediately
+ *   2. Writes to localStorage as resilient local cache
+ *   3. Fires async Gist PATCH in background (fire-and-forget)
+ */
+function saveData(data) {
+  _memCache = { ...data };
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch { /* quota exceeded or private browsing */ }
+  syncToGist(data);
+}
+
+
+// ── GIST SYNC ──────────────────────────────────────────────────────────────────
+
+async function fetchFromGist() {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      headers: {
+        'Authorization': `Bearer ${GIST_PAT}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+    if (!res.ok) {
+      console.warn('[NightLog] Gist fetch failed:', res.status, res.statusText);
+      return null;
+    }
+    const gist = await res.json();
+    const file = gist.files?.[GIST_FILE];
+    if (!file) {
+      console.warn('[NightLog] Gist file not found:', GIST_FILE);
+      return null;
+    }
+    const raw = file.truncated
+      ? await (await fetch(file.raw_url)).text()
+      : file.content;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn('[NightLog] fetchFromGist error:', err);
+    return null;
   }
 }
 
-function saveData(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+async function syncToGist(data) {
+  try {
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${GIST_PAT}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        files: { [GIST_FILE]: { content: JSON.stringify(data) } },
+      }),
+    });
+    if (!res.ok) {
+      console.warn('[NightLog] Gist PATCH failed:', res.status, res.statusText);
+    }
+  } catch (err) {
+    console.warn('[NightLog] syncToGist error:', err);
+  }
+}
+
+
+// ── PIN AUTH ───────────────────────────────────────────────────────────────────
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function isPinVerified() {
+  return sessionStorage.getItem(SESSION_KEY) === '1';
+}
+
+function waitForPin() {
+  return new Promise((resolve) => {
+    const overlay  = document.getElementById('pinOverlay');
+    const digitsEl = document.getElementById('pinDigits');
+    const errorEl  = document.getElementById('pinError');
+    const inputs   = Array.from(digitsEl.querySelectorAll('.pin-digit'));
+
+    setTimeout(() => inputs[0].focus(), 80);
+
+    function getEnteredPin() {
+      return inputs.map(inp => inp.value).join('');
+    }
+
+    function clearDigits() {
+      inputs.forEach(inp => { inp.value = ''; });
+      inputs[0].focus();
+    }
+
+    async function checkPin() {
+      const entered = getEnteredPin();
+      if (entered.length < 6) return;
+
+      const hash = await sha256(entered);
+      if (hash === PIN_HASH) {
+        sessionStorage.setItem(SESSION_KEY, '1');
+        errorEl.textContent = '';
+        overlay.classList.add('exit');
+        overlay.addEventListener('transitionend', () => {
+          overlay.style.display = 'none';
+          resolve();
+        }, { once: true });
+      } else {
+        errorEl.textContent = 'NESPRÁVNÝ KÓD';
+        digitsEl.classList.add('shake');
+        digitsEl.addEventListener('animationend', () => {
+          digitsEl.classList.remove('shake');
+        }, { once: true });
+        clearDigits();
+      }
+    }
+
+    inputs.forEach((input, idx) => {
+      input.addEventListener('input', (e) => {
+        const v = e.target.value.replace(/[^0-9]/g, '');
+        input.value = v ? v[v.length - 1] : '';
+        if (input.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+        if (getEnteredPin().length === 6) checkPin();
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && idx > 0) {
+          inputs[idx - 1].value = '';
+          inputs[idx - 1].focus();
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData)
+          .getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+        pasted.split('').forEach((ch, i) => { if (inputs[i]) inputs[i].value = ch; });
+        if (pasted.length === 6) {
+          checkPin();
+        } else if (inputs[pasted.length]) {
+          inputs[pasted.length].focus();
+        }
+      });
+    });
+  });
+}
+
+
+// ── LOADING OVERLAY ────────────────────────────────────────────────────────────
+
+function showLoadingOverlay(message = 'PŘIPOJOVÁNÍ KE GIST...') {
+  const overlay = document.getElementById('loadingOverlay');
+  const status  = document.getElementById('loadingStatus');
+  if (status) status.textContent = message;
+  overlay.setAttribute('aria-hidden', 'false');
+  overlay.classList.add('visible');
+  overlay.classList.remove('exit');
+}
+
+function hideLoadingOverlay() {
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.remove('visible');
+  overlay.classList.add('exit');
+  overlay.addEventListener('transitionend', () => {
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.classList.remove('exit');
+  }, { once: true });
+}
+
+function updateLoadingStatus(message) {
+  const status = document.getElementById('loadingStatus');
+  if (status) status.textContent = message;
 }
 
 /**
@@ -703,9 +887,48 @@ if ('serviceWorker' in navigator) {
 }
 
 
-// ── INIT ───────────────────────────────────────────────────────────────────────
+// ── STARTUP ────────────────────────────────────────────────────────────────────
 
-refreshAll();
-initResetButton();
-initSaveButton();
-initDayEditor();
+async function startup() {
+  // Step 1: PIN gate (skipped if already verified this session)
+  if (!isPinVerified()) {
+    await waitForPin();
+  }
+
+  // Step 2: Fetch data from Gist (with localStorage fallback)
+  showLoadingOverlay('PŘIPOJOVÁNÍ KE GIST...');
+
+  const gistData = await fetchFromGist();
+
+  if (gistData !== null) {
+    _memCache = gistData;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(gistData)); } catch { /* ignore */ }
+    updateLoadingStatus('DATA NAČTENA ✓');
+  } else {
+    let localData = {};
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      localData = raw ? JSON.parse(raw) : {};
+    } catch { /* ignore */ }
+    _memCache = localData;
+    updateLoadingStatus('OFFLINE – LOKÁLNÍ DATA');
+    await new Promise(resolve => setTimeout(resolve, 1200));
+  }
+
+  // Step 3: Hide loading overlay and render app
+  hideLoadingOverlay();
+  await new Promise(resolve => setTimeout(resolve, 310));
+
+  refreshAll();
+  initResetButton();
+  initSaveButton();
+  initDayEditor();
+}
+
+// Hide PIN overlay immediately if session is already verified (no animation needed)
+(function prepareOverlays() {
+  const pinOverlay = document.getElementById('pinOverlay');
+  if (isPinVerified()) pinOverlay.style.display = 'none';
+})();
+
+startup();

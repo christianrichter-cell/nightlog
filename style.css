@@ -850,3 +850,175 @@ body::before {
 .day-modal-actions .save-btn.ready {
   opacity: 1;
 }
+
+/* ── PIN OVERLAY ───────────────────────────────────────────────────── */
+.pin-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.pin-overlay.exit {
+  opacity: 0;
+  transform: scale(1.04);
+  pointer-events: none;
+}
+
+.pin-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 2.5rem 2rem;
+  max-width: 340px;
+  width: 100%;
+}
+
+.pin-title {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(1.2rem, 6vw, 1.8rem);
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pin-title-slash {
+  font-size: 0.7em;
+  color: var(--c1);
+  text-shadow: 0 0 12px var(--c1), 0 0 24px var(--c1);
+  font-weight: 400;
+}
+
+.pin-title-text {
+  color: #ffffff;
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.7),
+    0 0 30px rgba(0, 229, 255, 0.4);
+}
+
+.pin-subtitle {
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
+}
+
+.pin-digits {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.pin-digit {
+  width: 46px;
+  height: 60px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--c1);
+  font-family: 'Orbitron', monospace;
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-align: center;
+  caret-color: var(--c1);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-text-fill-color: var(--c1);
+}
+
+.pin-digit:focus {
+  border-color: var(--c1);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.5), inset 0 0 8px rgba(0, 229, 255, 0.08);
+}
+
+@keyframes pin-shake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-8px); }
+  30%  { transform: translateX(8px); }
+  45%  { transform: translateX(-6px); }
+  60%  { transform: translateX(6px); }
+  75%  { transform: translateX(-3px); }
+  90%  { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+}
+
+.pin-digits.shake {
+  animation: pin-shake 0.45s ease-in-out;
+}
+
+.pin-error {
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: #FF6D00;
+  text-shadow: 0 0 8px rgba(255, 109, 0, 0.6);
+  min-height: 1em;
+  text-align: center;
+}
+
+/* ── LOADING OVERLAY ───────────────────────────────────────────────── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.loading-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.loading-overlay.exit {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--border);
+  border-top-color: var(--c1);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+}
+
+.loading-text {
+  font-family: var(--font-head);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  color: var(--c1);
+  text-shadow: 0 0 8px var(--c1);
+}
+
+.loading-sub {
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
