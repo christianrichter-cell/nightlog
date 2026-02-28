@@ -4,7 +4,7 @@
    Bump CACHE_NAME version to force update.
 ═══════════════════════════════════════════ */
 
-const CACHE_NAME = 'nightlog-v14';
+const CACHE_NAME = 'nightlog-v15';
 
 // All local assets we want pre-cached at install time.
 // Google Fonts are NOT listed here – they are cached at runtime

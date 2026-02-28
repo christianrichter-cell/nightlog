@@ -171,7 +171,7 @@ async function sha256(str) {
 }
 
 function isPinVerified() {
-  return sessionStorage.getItem(SESSION_KEY) === '1';
+  return localStorage.getItem(SESSION_KEY) === '1';
 }
 
 function waitForPin() {
@@ -248,7 +248,7 @@ function waitForPin() {
         // Correct — clear lockout state and proceed
         localStorage.removeItem(LS_PIN_ATTEMPTS);
         localStorage.removeItem(LS_PIN_LOCKOUT);
-        sessionStorage.setItem(SESSION_KEY, '1');
+        localStorage.setItem(SESSION_KEY, '1');
         errorEl.textContent = '';
         overlay.classList.add('exit');
         overlay.addEventListener('transitionend', () => {
