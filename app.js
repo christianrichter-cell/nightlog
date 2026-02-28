@@ -1048,6 +1048,9 @@ async function startup() {
   }
 })();
 
+// Enable :active pseudo-class on iOS Safari (requires at least one touchstart listener)
+document.addEventListener('touchstart', function(){}, {passive: true});
+
 // Hide PIN overlay immediately if already verified (no animation needed)
 (function prepareOverlays() {
   const pinOverlay = document.getElementById('pinOverlay');
