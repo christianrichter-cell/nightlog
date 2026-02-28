@@ -64,8 +64,8 @@ const ACTIVITIES = [
 
 const STORAGE_KEY  = 'nightlog_v1';
 const GIST_ID      = '5e7f9f71bdcdf0e5c9a8cba664452624';
-const GIST_PAT     = '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';
 const GIST_FILE    = 'nightlog-data.json';
+const LS_GIST_PAT  = 'nightlog_gist_pat'; // PAT stored in localStorage, never in code
 const PIN_HASH     = '3e69f85e28228b9a23edc17f6742074bba4e6ea715344fa73eecb9246540b814';
 const SESSION_KEY  = 'nightlog_pin_ok';
 const PIN_MAX_ATTEMPTS = 5;
@@ -109,11 +109,15 @@ function saveData(data) {
 
 // ── GIST SYNC ──────────────────────────────────────────────────────────────────
 
+function getGistPat() {
+  return localStorage.getItem(LS_GIST_PAT) || '';
+}
+
 async function fetchFromGist() {
   try {
     const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
       headers: {
-        'Authorization': `Bearer ${GIST_PAT}`,
+        'Authorization': `Bearer ${getGistPat()}`,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
@@ -143,7 +147,7 @@ async function syncToGist(data) {
     const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
       method: 'PATCH',
       headers: {
-        'Authorization': `Bearer ${GIST_PAT}`,
+        'Authorization': `Bearer ${getGistPat()}`,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
@@ -994,7 +998,19 @@ async function startup() {
   initDayEditor();
 }
 
-// Hide PIN overlay immediately if session is already verified (no animation needed)
+// Save PAT from ?pat= URL param into localStorage, then remove from URL
+(function setupPatFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const pat = params.get('pat');
+  if (pat) {
+    localStorage.setItem(LS_GIST_PAT, pat);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('pat');
+    window.history.replaceState({}, '', url.toString());
+  }
+})();
+
+// Hide PIN overlay immediately if already verified (no animation needed)
 (function prepareOverlays() {
   const pinOverlay = document.getElementById('pinOverlay');
   if (isPinVerified()) pinOverlay.style.display = 'none';
