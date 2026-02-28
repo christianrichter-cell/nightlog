@@ -68,6 +68,10 @@ const GIST_PAT     = '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';
 const GIST_FILE    = 'nightlog-data.json';
 const PIN_HASH     = '3e69f85e28228b9a23edc17f6742074bba4e6ea715344fa73eecb9246540b814';
 const SESSION_KEY  = 'nightlog_pin_ok';
+const PIN_MAX_ATTEMPTS = 5;
+const PIN_LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutes
+const LS_PIN_ATTEMPTS  = 'nightlog_pin_attempts';
+const LS_PIN_LOCKOUT   = 'nightlog_pin_lockout';
 const CIRCUMFERENCE = 2 * Math.PI * 70; // SVG donut radius = 70
 
 // In-memory cache – populated at startup from Gist (or localStorage fallback).
@@ -177,8 +181,55 @@ function waitForPin() {
     const errorEl  = document.getElementById('pinError');
     const inputs   = Array.from(digitsEl.querySelectorAll('.pin-digit'));
 
-    setTimeout(() => inputs[0].focus(), 80);
+    let countdownInterval = null;
 
+    // ── Lockout helpers ──────────────────────────────────────────
+    function getLockoutRemaining() {
+      const until = parseInt(localStorage.getItem(LS_PIN_LOCKOUT) || '0', 10);
+      return Math.max(0, until - Date.now());
+    }
+
+    function getAttempts() {
+      return parseInt(localStorage.getItem(LS_PIN_ATTEMPTS) || '0', 10);
+    }
+
+    function setInputsDisabled(disabled) {
+      inputs.forEach(inp => { inp.disabled = disabled; });
+    }
+
+    function startCountdown() {
+      setInputsDisabled(true);
+      inputs.forEach(inp => { inp.value = ''; });
+
+      function tick() {
+        const remaining = getLockoutRemaining();
+        if (remaining <= 0) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+          localStorage.removeItem(LS_PIN_LOCKOUT);
+          localStorage.removeItem(LS_PIN_ATTEMPTS);
+          errorEl.textContent = '';
+          setInputsDisabled(false);
+          setTimeout(() => inputs[0].focus(), 50);
+          return;
+        }
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.ceil((remaining % 60000) / 1000);
+        errorEl.textContent = `PŘÍLIŠ MNOHO POKUSŮ – ČEKEJ ${mins}:${String(secs).padStart(2, '0')}`;
+      }
+
+      tick();
+      countdownInterval = setInterval(tick, 1000);
+    }
+
+    // Check lockout on load
+    if (getLockoutRemaining() > 0) {
+      startCountdown();
+    } else {
+      setTimeout(() => inputs[0].focus(), 80);
+    }
+
+    // ── PIN check ────────────────────────────────────────────────
     function getEnteredPin() {
       return inputs.map(inp => inp.value).join('');
     }
@@ -194,6 +245,9 @@ function waitForPin() {
 
       const hash = await sha256(entered);
       if (hash === PIN_HASH) {
+        // Correct — clear lockout state and proceed
+        localStorage.removeItem(LS_PIN_ATTEMPTS);
+        localStorage.removeItem(LS_PIN_LOCKOUT);
         sessionStorage.setItem(SESSION_KEY, '1');
         errorEl.textContent = '';
         overlay.classList.add('exit');
@@ -202,12 +256,27 @@ function waitForPin() {
           resolve();
         }, { once: true });
       } else {
-        errorEl.textContent = 'NESPRÁVNÝ KÓD';
-        digitsEl.classList.add('shake');
-        digitsEl.addEventListener('animationend', () => {
-          digitsEl.classList.remove('shake');
-        }, { once: true });
-        clearDigits();
+        // Wrong — increment attempts
+        const attempts = getAttempts() + 1;
+        localStorage.setItem(LS_PIN_ATTEMPTS, String(attempts));
+
+        if (attempts >= PIN_MAX_ATTEMPTS) {
+          localStorage.setItem(LS_PIN_LOCKOUT, String(Date.now() + PIN_LOCKOUT_MS));
+          localStorage.setItem(LS_PIN_ATTEMPTS, '0');
+          digitsEl.classList.add('shake');
+          digitsEl.addEventListener('animationend', () => {
+            digitsEl.classList.remove('shake');
+          }, { once: true });
+          startCountdown();
+        } else {
+          const left = PIN_MAX_ATTEMPTS - attempts;
+          errorEl.textContent = `NESPRÁVNÝ KÓD – ZBÝVÁ ${left} ${left === 1 ? 'POKUS' : 'POKUSY'}`;
+          digitsEl.classList.add('shake');
+          digitsEl.addEventListener('animationend', () => {
+            digitsEl.classList.remove('shake');
+          }, { once: true });
+          clearDigits();
+        }
       }
     }
 
