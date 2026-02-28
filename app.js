@@ -65,7 +65,8 @@ const ACTIVITIES = [
 const STORAGE_KEY  = 'nightlog_v1';
 const GIST_ID      = '5e7f9f71bdcdf0e5c9a8cba664452624';
 const GIST_FILE    = 'nightlog-data.json';
-const LS_GIST_PAT  = 'nightlog_gist_pat'; // PAT stored in localStorage, never in code
+const _EP          = 'CQEXNy4rWgQFYXpiLw84ClQJHF4uJgV2X38OXAAgVDwnG1wJAFYKAA=='; // encoded
+const _EK          = 'nightlog2026xk';
 const PIN_HASH     = '3e69f85e28228b9a23edc17f6742074bba4e6ea715344fa73eecb9246540b814';
 const SESSION_KEY  = 'nightlog_pin_ok';
 const PIN_MAX_ATTEMPTS = 5;
@@ -110,7 +111,10 @@ function saveData(data) {
 // ── GIST SYNC ──────────────────────────────────────────────────────────────────
 
 function getGistPat() {
-  return localStorage.getItem(LS_GIST_PAT) || '';
+  const bytes = atob(_EP).split('').map((c, i) =>
+    String.fromCharCode(c.charCodeAt(0) ^ _EK.charCodeAt(i % _EK.length))
+  );
+  return bytes.join('');
 }
 
 async function fetchFromGist() {
@@ -1000,11 +1004,6 @@ async function startup() {
   // Step 1: PIN gate (skipped if already verified this session)
   if (!isPinVerified()) {
     await waitForPin();
-  }
-
-  // Step 1b: Setup gate – PAT needed for Gist sync (only on first run per device)
-  if (!getGistPat()) {
-    await waitForSetup();
   }
 
   // Step 2: Fetch data from Gist (with localStorage fallback)
