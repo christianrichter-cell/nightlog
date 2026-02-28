@@ -1022,3 +1022,55 @@ body::before {
   letter-spacing: 0.14em;
   color: var(--text-dim);
 }
+
+/* ── SETUP OVERLAY ─────────────────────────────────────────────────── */
+.setup-desc {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  text-align: center;
+  max-width: 260px;
+}
+
+.setup-pat-input {
+  width: 100%;
+  max-width: 280px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--c1);
+  font-family: monospace;
+  font-size: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-text-fill-color: var(--c1);
+}
+
+.setup-pat-input:focus {
+  border-color: var(--c1);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+
+.setup-save-btn {
+  margin-top: 0.25rem;
+  padding: 0.65rem 2rem;
+  background: none;
+  border: 1px solid var(--c1);
+  border-radius: var(--radius);
+  color: var(--c1);
+  font-family: var(--font-head);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.setup-save-btn:hover {
+  background: rgba(0, 229, 255, 0.08);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+}
+
+.setup-save-btn:active {
+  background: rgba(0, 229, 255, 0.15);
+}

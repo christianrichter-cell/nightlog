@@ -315,6 +315,40 @@ function waitForPin() {
 }
 
 
+// ── SETUP SCREEN ───────────────────────────────────────────────────────────────
+
+function waitForSetup() {
+  return new Promise((resolve) => {
+    const overlay  = document.getElementById('setupOverlay');
+    const input    = document.getElementById('setupPatInput');
+    const btn      = document.getElementById('setupSaveBtn');
+    const errorEl  = document.getElementById('setupError');
+
+    overlay.style.display = 'flex';
+    setTimeout(() => input.focus(), 80);
+
+    function save() {
+      const val = input.value.trim();
+      if (!val.startsWith('ghp_') && !val.startsWith('github_pat_')) {
+        errorEl.textContent = 'NEPLATNÝ TOKEN – musí začínat ghp_ nebo github_pat_';
+        return;
+      }
+      localStorage.setItem(LS_GIST_PAT, val);
+      errorEl.textContent = '';
+      overlay.classList.add('exit');
+      overlay.addEventListener('transitionend', () => {
+        overlay.style.display = 'none';
+        overlay.classList.remove('exit');
+        resolve();
+      }, { once: true });
+    }
+
+    btn.addEventListener('click', save);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+  });
+}
+
+
 // ── LOADING OVERLAY ────────────────────────────────────────────────────────────
 
 function showLoadingOverlay(message = 'PŘIPOJOVÁNÍ KE GIST...') {
@@ -966,6 +1000,11 @@ async function startup() {
   // Step 1: PIN gate (skipped if already verified this session)
   if (!isPinVerified()) {
     await waitForPin();
+  }
+
+  // Step 1b: Setup gate – PAT needed for Gist sync (only on first run per device)
+  if (!getGistPat()) {
+    await waitForSetup();
   }
 
   // Step 2: Fetch data from Gist (with localStorage fallback)

@@ -50,6 +50,22 @@
     </div>
   </div>
 
+  <!-- ═══ SETUP OVERLAY ═══ -->
+  <div class="pin-overlay" id="setupOverlay" role="dialog" aria-modal="true" aria-label="Nastavení přístupu k datům" style="display:none">
+    <div class="pin-box">
+      <div class="pin-title">
+        <span class="pin-title-slash" aria-hidden="true">//</span>
+        <span class="pin-title-text">SETUP</span>
+        <span class="pin-title-slash" aria-hidden="true">//</span>
+      </div>
+      <p class="pin-subtitle">PRVNÍ SPUŠTĚNÍ NA TOMTO ZAŘÍZENÍ</p>
+      <p class="setup-desc">Vlož GitHub Access Token pro synchronizaci dat:</p>
+      <input class="setup-pat-input" id="setupPatInput" type="password" placeholder="ghp_..." autocomplete="off" spellcheck="false" />
+      <button class="setup-save-btn" id="setupSaveBtn">ULOŽIT</button>
+      <p class="pin-error" id="setupError" aria-live="assertive"></p>
+    </div>
+  </div>
+
   <!-- ═══ LOADING OVERLAY ═══ -->
   <div class="loading-overlay" id="loadingOverlay" aria-hidden="true" role="status" aria-label="Načítání dat">
     <div class="loading-box">
