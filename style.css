@@ -52,6 +52,9 @@ body {
   /* iOS safe areas */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+  /* Hide scroll indicator on iOS PWA */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 /* Ambient grid */
