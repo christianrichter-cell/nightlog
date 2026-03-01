@@ -696,10 +696,8 @@ body::before {
 
 
 /* ── SCROLLBAR ─────────────────────────── */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--c1); }
+html { scrollbar-width: none; }        /* Firefox */
+::-webkit-scrollbar { display: none; } /* Chrome / Safari / iOS */
 
 
 /* ── FOCUS ─────────────────────────────── */
