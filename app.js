@@ -422,16 +422,26 @@ function addSelection(index) {
 }
 
 /**
- * Returns an array of counts [count0, count1, …] per activity.
+ * Returns an array of counts [count0, count1, count2, count3] for display.
+ * Only individual activities (0–3) are tracked; shared activities are expanded:
+ *   4 (OBA čtou) → counts[0]++ AND counts[2]++  (CHRIS čte + KÁŤA čte)
+ *   5 (OBA tel)  → counts[1]++ AND counts[3]++  (CHRIS tel + KÁŤA tel)
  * Handles both old (single int) and new (array) data format.
  */
 function calculateCounts(data) {
-  const counts = new Array(ACTIVITIES.length).fill(0);
+  const counts = [0, 0, 0, 0];
   for (const val of Object.values(data)) {
     const indices = Array.isArray(val) ? val : [val];
     for (const idx of indices) {
-      if (Number.isInteger(idx) && idx >= 0 && idx < ACTIVITIES.length) {
+      if (!Number.isInteger(idx) || idx < 0 || idx >= ACTIVITIES.length) continue;
+      if (idx < 4) {
         counts[idx]++;
+      } else if (idx === 4) {
+        counts[0]++;  // CHRIS čte
+        counts[2]++;  // KÁŤA čte
+      } else if (idx === 5) {
+        counts[1]++;  // CHRIS tel
+        counts[3]++;  // KÁŤA tel
       }
     }
   }
@@ -498,7 +508,7 @@ function renderDonutChart(counts, total) {
 
   let cumulative = 0;
 
-  ACTIVITIES.forEach((act, i) => {
+  ACTIVITIES.slice(0, 4).forEach((act, i) => {
     const count = counts[i] || 0;
     if (count === 0) return;
 
@@ -540,7 +550,7 @@ function renderLegend(counts, total) {
   const list = document.getElementById('scoreLegend');
   list.innerHTML = '';
 
-  ACTIVITIES.forEach((act, i) => {
+  ACTIVITIES.slice(0, 4).forEach((act, i) => {
     const count = counts[i] || 0;
     const pct   = total > 0 ? Math.round((count / total) * 100) : 0;
 
