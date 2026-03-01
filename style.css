@@ -38,24 +38,31 @@
 
 html {
   font-size: 16px;
-  scroll-behavior: smooth;
+  height: 100%;
 }
 
 body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-mono);
-  min-height: 100vh;
-  min-height: 100dvh;
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
-  /* iOS safe areas */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  /* Hide scroll indicator on iOS PWA */
+}
+
+/* Scroll wrapper – body stays fixed, only this div scrolls.
+   This is the only reliable way to hide the iOS PWA scroll indicator. */
+#scrollWrap {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  /* iOS safe areas (moved here from body) */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
+#scrollWrap::-webkit-scrollbar { display: none; width: 0; }
 
 /* Ambient grid */
 body::before {
@@ -699,8 +706,8 @@ body::before {
 
 
 /* ── SCROLLBAR ─────────────────────────── */
-html { scrollbar-width: none; }        /* Firefox */
-::-webkit-scrollbar { display: none; } /* Chrome / Safari / iOS */
+/* Global fallback – #scrollWrap rules above are the primary fix for iOS */
+::-webkit-scrollbar { display: none; }
 
 
 /* ── FOCUS ─────────────────────────────── */

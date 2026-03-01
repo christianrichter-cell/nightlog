@@ -73,6 +73,7 @@ const PIN_MAX_ATTEMPTS = 5;
 const PIN_LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutes
 const LS_PIN_ATTEMPTS  = 'nightlog_pin_attempts';
 const LS_PIN_LOCKOUT   = 'nightlog_pin_lockout';
+const LS_SAVE_TS       = 'nightlog_save_ts'; // timestamp of last local save
 const CIRCUMFERENCE = 2 * Math.PI * 70; // SVG donut radius = 70
 
 // In-memory cache – populated at startup from Gist (or localStorage fallback).
@@ -103,6 +104,7 @@ function saveData(data) {
   _memCache = { ...data };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(LS_SAVE_TS, String(Date.now()));
   } catch { /* quota exceeded or private browsing */ }
   syncToGist(data);
 }
@@ -139,7 +141,7 @@ async function fetchFromGist() {
     const raw = file.truncated
       ? await (await fetch(file.raw_url)).text()
       : file.content;
-    return JSON.parse(raw);
+    return { data: JSON.parse(raw), updatedAt: new Date(gist.updated_at).getTime() };
   } catch (err) {
     console.warn('[NightLog] fetchFromGist error:', err);
     return null;
@@ -1019,11 +1021,24 @@ async function startup() {
   // Step 2: Fetch data from Gist (with localStorage fallback)
   showLoadingOverlay('PŘIPOJOVÁNÍ KE GIST...');
 
-  const gistData = await fetchFromGist();
+  const gistResult = await fetchFromGist();
 
-  if (gistData !== null) {
-    _memCache = gistData;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(gistData)); } catch { /* ignore */ }
+  if (gistResult !== null) {
+    const localTs = parseInt(localStorage.getItem(LS_SAVE_TS) || '0', 10);
+    if (gistResult.updatedAt >= localTs) {
+      // Gist je aktuální nebo novější → použij Gist
+      _memCache = gistResult.data;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(gistResult.data)); } catch { /* ignore */ }
+    } else {
+      // Lokální data jsou novější (Gist PATCH nestihl doběhnout před killem) → použij localStorage
+      let localData = {};
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        localData = raw ? JSON.parse(raw) : {};
+      } catch { /* ignore */ }
+      _memCache = localData;
+      syncToGist(localData); // oprav zastaralý Gist
+    }
     updateLoadingStatus('DATA NAČTENA ✓');
   } else {
     let localData = {};
