@@ -13,52 +13,52 @@
 // line1 = kdo (velké, Orbitron), line2 = co (malé, mono)
 const ACTIVITIES = [
   {
-    id:    'chris-cte',
-    line1: 'CHRIS',
-    line2: 'si čte',
-    icon:  '◈',
-    color: '#00E5FF',
-    rgb:   '0,229,255',
+    id:       'chris-cte',
+    line1:    'CHRIS',
+    line2:    'si čte',
+    icon:     '◈',
+    color:    '#00E5FF',  rgb:    '0,229,255',
+    dayColor: '#0077AA',  dayRgb: '0,119,170',
   },
   {
-    id:    'chris-tel',
-    line1: 'CHRIS',
-    line2: 'na telefonu',
-    icon:  '◁',
-    color: '#0070FF',   /* electric blue – stejná rodina jako cyan výše */
-    rgb:   '0,112,255',
+    id:       'chris-tel',
+    line1:    'CHRIS',
+    line2:    'na telefonu',
+    icon:     '◁',
+    color:    '#0070FF',  rgb:    '0,112,255',
+    dayColor: '#003D99',  dayRgb: '0,61,153',
   },
   {
-    id:    'kata-cte',
-    line1: 'KÁŤA',
-    line2: 'si čte',
-    icon:  '✦',
-    color: '#FF00BB',   /* hot magenta */
-    rgb:   '255,0,187',
+    id:       'kata-cte',
+    line1:    'KÁŤA',
+    line2:    'si čte',
+    icon:     '✦',
+    color:    '#FF00BB',  rgb:    '255,0,187',
+    dayColor: '#BB0066',  dayRgb: '187,0,102',
   },
   {
-    id:    'kata-tel',
-    line1: 'KÁŤA',
-    line2: 'na telefonu',
-    icon:  '◆',
-    color: '#FF6699',   /* neonová růžová – stejná rodina jako magenta výše */
-    rgb:   '255,102,153',
+    id:       'kata-tel',
+    line1:    'KÁŤA',
+    line2:    'na telefonu',
+    icon:     '◆',
+    color:    '#FF6699',  rgb:    '255,102,153',
+    dayColor: '#994466',  dayRgb: '153,68,102',
   },
   {
-    id:    'oba-ctou',
-    line1: 'OBA',
-    line2: 'si čtou',
-    icon:  '◉',
-    color: '#00FF41',   /* neon green */
-    rgb:   '0,255,65',
+    id:       'oba-ctou',
+    line1:    'OBA',
+    line2:    'si čtou',
+    icon:     '◉',
+    color:    '#00FF41',  rgb:    '0,255,65',
+    dayColor: '#007722',  dayRgb: '0,119,34',
   },
   {
-    id:    'oba-tel',
-    line1: 'OBA',
-    line2: 'na telefonu',
-    icon:  '⬢',
-    color: '#FFE600',   /* neon yellow */
-    rgb:   '255,230,0',
+    id:       'oba-tel',
+    line1:    'OBA',
+    line2:    'na telefonu',
+    icon:     '⬢',
+    color:    '#FFE600',  rgb:    '255,230,0',
+    dayColor: '#886600',  dayRgb: '136,102,0',
   },
 ];
 
@@ -92,6 +92,27 @@ let pendingSelections = [];
 
 // Stats filter: 'all' | 'chris' | 'kata'
 let statsFilter = 'all';
+
+// Theme mode: 'auto' | 'day' | 'night'
+let themeMode = 'auto';
+
+function getEffectiveTheme() {
+  if (themeMode === 'auto') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day';
+  }
+  return themeMode;
+}
+
+function applyThemeClass() {
+  document.documentElement.dataset.theme = getEffectiveTheme();
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === themeMode);
+  });
+}
+
+// Returns the correct color/rgb for an activity based on current theme
+function actColor(act) { return getEffectiveTheme() === 'day' ? act.dayColor : act.color; }
+function actRgb(act)   { return getEffectiveTheme() === 'day' ? act.dayRgb   : act.rgb;   }
 
 
 // ── DATA LAYER ─────────────────────────────────────────────────────────────────
@@ -502,11 +523,13 @@ function renderDonutChart(counts) {
   const svg = document.getElementById('scoreChart');
   svg.innerHTML = '';
 
-  // Background ring (dark fill)
+  const isDay = getEffectiveTheme() === 'day';
+
+  // Background ring
   svg.appendChild(svgEl('circle', {
     cx: 100, cy: 100, r: 70,
     fill: 'none',
-    stroke: '#0d0d2e',
+    stroke: isDay ? '#EDE8DF' : '#0d0d2e',
     'stroke-width': 20,
   }));
 
@@ -514,13 +537,13 @@ function renderDonutChart(counts) {
   svg.appendChild(svgEl('circle', {
     cx: 100, cy: 100, r: 81,
     fill: 'none',
-    stroke: '#141440',
+    stroke: isDay ? '#D4CCB8' : '#141440',
     'stroke-width': 0.5,
   }));
   svg.appendChild(svgEl('circle', {
     cx: 100, cy: 100, r: 58,
     fill: 'none',
-    stroke: '#141440',
+    stroke: isDay ? '#D4CCB8' : '#141440',
     'stroke-width': 0.5,
   }));
 
@@ -543,12 +566,13 @@ function renderDonutChart(counts) {
     const gap     = segLen > 6 ? 3 : 0;
     const drawLen = Math.max(0, segLen - gap);
 
+    const color  = actColor(act);
     const circle = svgEl('circle', {
       cx: 100,
       cy: 100,
       r:  70,
       fill:              'none',
-      stroke:            act.color,
+      stroke:            color,
       'stroke-width':    18,
       'stroke-dasharray':  `0 ${CIRCUMFERENCE}`,
       'stroke-dashoffset': `${-cumulative}`,
@@ -556,7 +580,7 @@ function renderDonutChart(counts) {
       class:             'segment',
     });
 
-    circle.style.filter = `drop-shadow(0 0 5px ${act.color})`;
+    if (!isDay) circle.style.filter = `drop-shadow(0 0 5px ${color})`;
     svg.appendChild(circle);
 
     // Animate segment to its final length after the browser paints the initial state
@@ -581,8 +605,11 @@ function renderLegend(counts) {
                        : [0, 1, 2, 3];
   const filteredTotal = visibleIndices.reduce((sum, i) => sum + (counts[i] || 0), 0);
 
+  const dayMode = getEffectiveTheme() === 'day';
   visibleIndices.forEach(i => {
     const act   = ACTIVITIES[i];
+    const color = actColor(act);
+    const rgb   = actRgb(act);
     const count = counts[i] || 0;
     const pct   = filteredTotal > 0 ? Math.round((count / filteredTotal) * 100) : 0;
 
@@ -590,12 +617,12 @@ function renderLegend(counts) {
     li.className = 'legend-item';
     li.innerHTML = `
       <span class="legend-dot"
-            style="background:${act.color};box-shadow:0 0 6px ${act.color}">
+            style="background:${color};${dayMode ? '' : `box-shadow:0 0 6px ${color}`}">
       </span>
-      <span class="legend-name" style="color:${act.color}">${act.line1} ${act.line2}</span>
+      <span class="legend-name" style="color:${color}">${act.line1} ${act.line2}</span>
       <span class="legend-count">${count}×</span>
       <span class="legend-pct"
-            style="color:${act.color};text-shadow:0 0 8px rgba(${act.rgb},0.65)">
+            style="color:${color};${dayMode ? '' : `text-shadow:0 0 8px rgba(${rgb},0.65)`}">
         ${pct}%
       </span>`;
     list.appendChild(li);
@@ -642,8 +669,8 @@ function renderButtons(savedSelections, isSaved) {
       isDisabled  ? 'disabled'  : '',
     ].filter(Boolean).join(' ');
 
-    btn.style.setProperty('--btn-color', act.color);
-    btn.style.setProperty('--btn-rgb',   act.rgb);
+    btn.style.setProperty('--btn-color', actColor(act));
+    btn.style.setProperty('--btn-rgb',   actRgb(act));
 
     btn.type = 'button';
     btn.disabled = isDisabled;
@@ -835,8 +862,8 @@ function renderDayEditor() {
       isDisabled  ? 'disabled'  : '',
     ].filter(Boolean).join(' ');
 
-    btn.style.setProperty('--btn-color', act.color);
-    btn.style.setProperty('--btn-rgb',   act.rgb);
+    btn.style.setProperty('--btn-color', actColor(act));
+    btn.style.setProperty('--btn-rgb',   actRgb(act));
     btn.type = 'button';
     btn.disabled = isDisabled;
     btn.setAttribute('aria-label',  `${act.line1} ${act.line2}`);
@@ -961,6 +988,28 @@ document.getElementById('nextMonth').addEventListener('click', (e) => {
 
 let resetPending = false;
 let resetTimer   = null;
+
+function initThemeToggle() {
+  themeMode = localStorage.getItem('nightlog_theme') || 'auto';
+  applyThemeClass();
+
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      themeMode = btn.dataset.theme;
+      localStorage.setItem('nightlog_theme', themeMode);
+      applyThemeClass();
+      refreshAll();
+    });
+  });
+
+  // Respond to system dark/light mode changes when in auto
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (themeMode === 'auto') {
+      applyThemeClass();
+      refreshAll();
+    }
+  });
+}
 
 function initStatsFilter() {
   document.querySelectorAll('.stats-filter-btn').forEach(btn => {
@@ -1100,6 +1149,7 @@ async function startup() {
   hideLoadingOverlay();
   await new Promise(resolve => setTimeout(resolve, 310));
 
+  initThemeToggle();
   refreshAll();
   initResetButton();
   initSaveButton();
@@ -1126,6 +1176,13 @@ document.addEventListener('touchstart', function(){}, {passive: true});
 (function prepareOverlays() {
   const pinOverlay = document.getElementById('pinOverlay');
   if (isPinVerified()) pinOverlay.style.display = 'none';
+})();
+
+// Apply theme class immediately (before PIN screen renders) so colours are correct from the start
+(function() {
+  const stored = localStorage.getItem('nightlog_theme') || 'auto';
+  const isDark = stored === 'night' || (stored === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = isDark ? 'night' : 'day';
 })();
 
 startup();

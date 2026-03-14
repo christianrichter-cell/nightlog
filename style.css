@@ -1117,3 +1117,164 @@ body::before {
 .setup-save-btn:active {
   background: rgba(0, 229, 255, 0.15);
 }
+
+
+/* ── THEME TOGGLE ──────────────────────── */
+.theme-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  padding-bottom: 1rem;
+}
+
+.theme-btn {
+  flex: 0 0 auto;
+  min-width: 3.5rem;
+  padding: 0.3rem 0.6rem;
+  font-family: var(--font-head);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, text-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.theme-btn.active {
+  color: var(--c1);
+  border-color: var(--c1);
+  text-shadow: 0 0 8px var(--c1);
+}
+
+.theme-btn:not(.active):hover {
+  color: var(--text);
+  border-color: rgba(255,255,255,0.3);
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   DAY THEME
+   Applied when <html data-theme="day">
+══════════════════════════════════════════════════════════════ */
+
+html[data-theme="day"] {
+  --bg:       #F5F0E8;
+  --bg-panel: #FFFFFF;
+  --bg-card:  #EDE8DF;
+  --text:     #2A2835;
+  --text-dim: #8A849A;
+  --border:   #D4CCB8;
+}
+
+/* No CRT scanlines in day mode */
+html[data-theme="day"] .scanlines { display: none; }
+
+/* Subtle warm grid instead of neon grid */
+html[data-theme="day"] body::before {
+  background-image:
+    linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+}
+
+/* Header */
+html[data-theme="day"] .title-main {
+  color: #2A2835;
+  text-shadow: none;
+  animation: none;
+}
+html[data-theme="day"] .title-slash {
+  text-shadow: none;
+}
+
+/* Score section */
+html[data-theme="day"] .chart-wrap svg { filter: none; }
+html[data-theme="day"] .chart-number {
+  text-shadow: none;
+  animation: none;
+}
+html[data-theme="day"] .stats-filter-btn { border-color: rgba(0,0,0,0.12); }
+html[data-theme="day"] .stats-filter-btn.active { text-shadow: none; }
+html[data-theme="day"] .stats-filter-btn:not(.active):hover { border-color: rgba(0,0,0,0.3); }
+
+/* Panel corners — use day teal instead of neon cyan */
+html[data-theme="day"] .panel-corner { border-color: #0077AA; opacity: 0.5; }
+
+/* Activity buttons — remove neon glow, use soft shadows */
+html[data-theme="day"] .activity-btn {
+  background: rgba(var(--btn-rgb), 0.06);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+html[data-theme="day"] .activity-btn:hover:not(.disabled, .selected) {
+  box-shadow: 0 3px 12px rgba(var(--btn-rgb), 0.28), 0 1px 4px rgba(0,0,0,0.06);
+  transform: translateY(-2px);
+}
+html[data-theme="day"] .activity-btn.selected {
+  animation: none;
+  box-shadow: 0 2px 10px rgba(var(--btn-rgb), 0.35), inset 0 0 12px rgba(var(--btn-rgb), 0.08);
+}
+html[data-theme="day"] .btn-icon { filter: none; }
+
+/* Save button */
+html[data-theme="day"] .save-btn.ready {
+  box-shadow: 0 2px 8px rgba(var(--btn-rgb), 0.2);
+}
+html[data-theme="day"] .save-btn.ready:hover {
+  box-shadow: 0 4px 14px rgba(var(--btn-rgb), 0.35);
+}
+
+/* Locked message — no flicker animation in day mode */
+html[data-theme="day"] .locked-message { animation: none; }
+
+/* Calendar */
+html[data-theme="day"] .calendar-title { text-shadow: none; }
+html[data-theme="day"] .cal-day { background: var(--bg-card); }
+html[data-theme="day"] .cal-day.today {
+  border-color: rgba(0,0,0,0.4) !important;
+  color: #2A2835;
+}
+html[data-theme="day"] .cal-day.today::after { background: #2A2835; }
+html[data-theme="day"] .cal-day.past-day:not(.today):not(.recorded) { color: #B0A898; }
+html[data-theme="day"] .cal-day.past-day:not(.today):not(.recorded):hover {
+  background: rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.15);
+  color: var(--text);
+}
+html[data-theme="day"] .cal-nav-btn { border-color: var(--border); }
+@media (hover: hover) and (pointer: fine) {
+  html[data-theme="day"] .cal-nav-btn:hover {
+    box-shadow: 0 1px 6px rgba(0,119,170,0.2);
+  }
+}
+html[data-theme="day"] .cal-nav-btn:active {
+  box-shadow: 0 1px 6px rgba(0,119,170,0.2);
+}
+
+/* Day modal */
+html[data-theme="day"] .day-modal-overlay { background: rgba(200,195,185,0.75); }
+html[data-theme="day"] .day-modal-date { text-shadow: none; }
+
+/* Theme toggle — day-appropriate inactive style */
+html[data-theme="day"] .theme-btn { border-color: rgba(0,0,0,0.12); }
+html[data-theme="day"] .theme-btn.active { text-shadow: none; }
+html[data-theme="day"] .theme-btn:not(.active):hover { border-color: rgba(0,0,0,0.3); color: var(--text); }
+
+/* PIN overlay — day colours */
+html[data-theme="day"] .pin-title-text { color: #2A2835; text-shadow: none; }
+html[data-theme="day"] .pin-title-slash { text-shadow: none; }
+html[data-theme="day"] .pin-digit {
+  color: #0077AA;
+  -webkit-text-fill-color: #0077AA;
+  caret-color: #0077AA;
+}
+html[data-theme="day"] .pin-digit:focus {
+  border-color: #0077AA;
+  box-shadow: 0 0 8px rgba(0,119,170,0.25);
+}
+
+/* Loading overlay */
+html[data-theme="day"] .loading-text { text-shadow: none; }
+html[data-theme="day"] .loading-spinner { box-shadow: none; border-top-color: #0077AA; }
