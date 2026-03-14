@@ -83,6 +83,9 @@ let _memCache = null;
 // In-memory pending selection (not yet saved)
 let pendingSelections = [];
 
+// Stats filter: 'all' | 'chris' | 'kata'
+let statsFilter = 'all';
+
 
 // ── DATA LAYER ─────────────────────────────────────────────────────────────────
 
@@ -480,7 +483,7 @@ function renderDate() {
 //   dasharray  = "segLen  (CIRCUMFERENCE - segLen)"
 //   dashoffset = -cumulativeOffset   (negative = push segment forward)
 
-function renderDonutChart(counts, total) {
+function renderDonutChart(counts) {
   const svg = document.getElementById('scoreChart');
   svg.innerHTML = '';
 
@@ -506,15 +509,21 @@ function renderDonutChart(counts, total) {
     'stroke-width': 0.5,
   }));
 
-  if (total === 0) return;
+  const visibleIndices = statsFilter === 'chris' ? [0, 1]
+                       : statsFilter === 'kata'  ? [2, 3]
+                       : [0, 1, 2, 3];
+  const filteredTotal = visibleIndices.reduce((sum, i) => sum + (counts[i] || 0), 0);
+
+  if (filteredTotal === 0) return;
 
   let cumulative = 0;
 
-  ACTIVITIES.slice(0, 4).forEach((act, i) => {
+  visibleIndices.forEach(i => {
+    const act   = ACTIVITIES[i];
     const count = counts[i] || 0;
     if (count === 0) return;
 
-    const segLen  = (count / total) * CIRCUMFERENCE;
+    const segLen  = (count / filteredTotal) * CIRCUMFERENCE;
     // Small visual gap between adjacent segments (skip for tiny segments)
     const gap     = segLen > 6 ? 3 : 0;
     const drawLen = Math.max(0, segLen - gap);
@@ -548,13 +557,19 @@ function renderDonutChart(counts, total) {
 
 // ── RENDER: SCORE LEGEND ───────────────────────────────────────────────────────
 
-function renderLegend(counts, total) {
+function renderLegend(counts) {
   const list = document.getElementById('scoreLegend');
   list.innerHTML = '';
 
-  ACTIVITIES.slice(0, 4).forEach((act, i) => {
+  const visibleIndices = statsFilter === 'chris' ? [0, 1]
+                       : statsFilter === 'kata'  ? [2, 3]
+                       : [0, 1, 2, 3];
+  const filteredTotal = visibleIndices.reduce((sum, i) => sum + (counts[i] || 0), 0);
+
+  visibleIndices.forEach(i => {
+    const act   = ACTIVITIES[i];
     const count = counts[i] || 0;
-    const pct   = total > 0 ? Math.round((count / total) * 100) : 0;
+    const pct   = filteredTotal > 0 ? Math.round((count / filteredTotal) * 100) : 0;
 
     const li = document.createElement('li');
     li.className = 'legend-item';
@@ -932,6 +947,17 @@ document.getElementById('nextMonth').addEventListener('click', (e) => {
 let resetPending = false;
 let resetTimer   = null;
 
+function initStatsFilter() {
+  document.querySelectorAll('.stats-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      statsFilter = btn.dataset.filter;
+      document.querySelectorAll('.stats-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      refreshAll();
+    });
+  });
+}
+
 function initResetButton() {
   const btn = document.getElementById('resetTodayBtn');
   if (!btn) return;
@@ -980,15 +1006,19 @@ function refreshAll() {
   const savedSelections = getTodaySelections(data);
   const isSaved        = data[getDateKey()] !== undefined;
   const counts         = calculateCounts(data);
-  const total          = counts.reduce((a, b) => a + b, 0);
+
+  const visibleIndices = statsFilter === 'chris' ? [0, 1]
+                       : statsFilter === 'kata'  ? [2, 3]
+                       : [0, 1, 2, 3];
+  const displayTotal = visibleIndices.reduce((sum, i) => sum + (counts[i] || 0), 0);
 
   renderDate();
-  renderDonutChart(counts, total);
-  renderLegend(counts, total);
+  renderDonutChart(counts);
+  renderLegend(counts);
   renderButtons(savedSelections, isSaved);
   renderCalendar(data);
 
-  document.getElementById('totalCount').textContent = total;
+  document.getElementById('totalCount').textContent = displayTotal;
 }
 
 
@@ -1059,6 +1089,7 @@ async function startup() {
   initResetButton();
   initSaveButton();
   initDayEditor();
+  initStatsFilter();
 }
 
 // Save PAT from ?pat= URL param into localStorage, then remove from URL
