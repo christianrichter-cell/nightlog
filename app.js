@@ -1042,7 +1042,7 @@ function refreshAll() {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('./sw.js')
+      .register('./sw.js', { updateViaCache: 'none' })
       .then(reg => {
         console.log('[NightLog] SW registered, scope:', reg.scope);
         // Zkontroluje update při každém příchodu do popředí (klíčové pro iOS PWA)
