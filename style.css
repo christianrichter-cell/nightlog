@@ -1305,7 +1305,7 @@ html[data-theme="day"] .cal-nav-btn:active {
 }
 
 /* Day modal */
-html[data-theme="day"] .day-modal-overlay { background: rgba(200,195,185,0.75); }
+html[data-theme="day"] .day-modal-overlay { background: rgba(180,195,210,0.78); }
 html[data-theme="day"] .day-modal-date { text-shadow: none; }
 
 /* Theme toggle — day-appropriate inactive style */
