@@ -10,6 +10,39 @@
   padding: 0;
 }
 
+/* Smooth theme transition – applied to structural elements only to avoid
+   interfering with hover/active transitions on interactive elements */
+body,
+.panel,
+.cal-day,
+.pin-overlay,
+.loading-overlay,
+.day-modal,
+.day-modal-overlay,
+.app-date,
+.section-label,
+.legend-count,
+.chart-label,
+.calendar-weekdays span,
+.pin-subtitle,
+.reset-btn,
+.cal-nav-btn,
+.day-cancel-btn,
+.day-delete-btn,
+.day-modal-close {
+  transition:
+    background-color 0.55s ease,
+    color            0.55s ease,
+    border-color     0.45s ease;
+}
+
+.title-main  { transition: color 0.55s ease, text-shadow 0.55s ease; }
+.title-slash { transition: color 0.55s ease, text-shadow 0.55s ease; }
+.chart-number { transition: color 0.55s ease, text-shadow 0.55s ease; }
+.calendar-title { transition: color 0.55s ease, text-shadow 0.55s ease; }
+.panel-corner { transition: border-color 0.55s ease; }
+.scanlines { transition: opacity 0.55s ease; }
+
 :root {
   /* Background */
   --bg:        #030311;
@@ -262,9 +295,8 @@ body::before {
   overflow: visible;
 }
 
-#scoreChart .segment {
-  transition: stroke-dasharray 0.75s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* Segment transitions are set per-element by JS for sequential fill */
+#scoreChart .segment { }
 
 .chart-center {
   position: absolute;
@@ -624,7 +656,7 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   border-radius: 2px;
   border: 1px solid transparent;
   background: var(--bg-card);
@@ -1155,6 +1187,13 @@ body::before {
   border-color: rgba(255,255,255,0.3);
 }
 
+/* Larger icons for sun/moon buttons, keep AUTO at default size */
+.theme-btn[data-theme="day"],
+.theme-btn[data-theme="night"] {
+  font-size: 1.05rem;
+  letter-spacing: 0;
+}
+
 
 /* ══════════════════════════════════════════════════════════════
    DAY THEME
@@ -1162,16 +1201,18 @@ body::before {
 ══════════════════════════════════════════════════════════════ */
 
 html[data-theme="day"] {
-  --bg:       #F5F0E8;
-  --bg-panel: #FFFFFF;
-  --bg-card:  #EDE8DF;
+  --bg:       #E8EEF4;
+  --bg-panel: #F2F6FA;
+  --bg-card:  #DCE5EE;
   --text:     #2A2835;
-  --text-dim: #8A849A;
-  --border:   #D4CCB8;
+  --text-dim: #6A6480;
+  --border:   #C4D0DC;
+  --c1:       #0077AA;   /* deep teal – replaces neon cyan on light bg */
+  --c3:       #007722;   /* deep green – replaces neon green (save btn) */
 }
 
 /* No CRT scanlines in day mode */
-html[data-theme="day"] .scanlines { display: none; }
+html[data-theme="day"] .scanlines { opacity: 0; pointer-events: none; }
 
 /* Subtle warm grid instead of neon grid */
 html[data-theme="day"] body::before {
@@ -1181,10 +1222,17 @@ html[data-theme="day"] body::before {
 }
 
 /* Header */
+@keyframes title-drift-day {
+  0%   { transform: translateY(0px) rotate(-0.3deg); opacity: 1; }
+  35%  { transform: translateY(-4px) rotate(0.2deg);  opacity: 0.9; }
+  70%  { transform: translateY(-2px) rotate(-0.15deg); opacity: 0.95; }
+  100% { transform: translateY(0px) rotate(-0.3deg); opacity: 1; }
+}
+
 html[data-theme="day"] .title-main {
   color: #2A2835;
   text-shadow: none;
-  animation: none;
+  animation: title-drift-day 6s ease-in-out infinite;
 }
 html[data-theme="day"] .title-slash {
   text-shadow: none;
@@ -1219,11 +1267,12 @@ html[data-theme="day"] .activity-btn.selected {
 html[data-theme="day"] .btn-icon { filter: none; }
 
 /* Save button */
+html[data-theme="day"] .save-btn:not(.ready) { opacity: 0.45; } /* slightly more visible than night's 0.35 */
 html[data-theme="day"] .save-btn.ready {
-  box-shadow: 0 2px 8px rgba(var(--btn-rgb), 0.2);
+  box-shadow: 0 2px 8px rgba(0,119,34,0.2);
 }
 html[data-theme="day"] .save-btn.ready:hover {
-  box-shadow: 0 4px 14px rgba(var(--btn-rgb), 0.35);
+  box-shadow: 0 4px 14px rgba(0,119,34,0.35);
 }
 
 /* Locked message — no flicker animation in day mode */
@@ -1231,6 +1280,8 @@ html[data-theme="day"] .locked-message { animation: none; }
 
 /* Calendar */
 html[data-theme="day"] .calendar-title { text-shadow: none; }
+/* Prevent white flash when calendar grid is briefly emptied during re-render */
+html[data-theme="day"] .calendar-grid { background: var(--bg-card); }
 html[data-theme="day"] .cal-day { background: var(--bg-card); }
 html[data-theme="day"] .cal-day.today {
   border-color: rgba(0,0,0,0.4) !important;

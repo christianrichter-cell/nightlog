@@ -581,9 +581,17 @@ function renderDonutChart(counts) {
     });
 
     if (!isDay) circle.style.filter = `drop-shadow(0 0 5px ${color})`;
+
+    // Sequential fill: each segment starts after the previous one finishes,
+    // all at the same angular speed (1.5 s total for a full circle)
+    const FILL_TOTAL = 1.5;
+    const segDuration = (segLen / CIRCUMFERENCE) * FILL_TOTAL;
+    const segDelay    = (cumulative / CIRCUMFERENCE) * FILL_TOTAL;
+    circle.style.transition =
+      `stroke-dasharray ${segDuration.toFixed(3)}s ease-in-out ${segDelay.toFixed(3)}s`;
+
     svg.appendChild(circle);
 
-    // Animate segment to its final length after the browser paints the initial state
     const finalDasharray = `${drawLen} ${CIRCUMFERENCE - drawLen}`;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       circle.setAttribute('stroke-dasharray', finalDasharray);
@@ -998,7 +1006,8 @@ function initThemeToggle() {
       themeMode = btn.dataset.theme;
       localStorage.setItem('nightlog_theme', themeMode);
       applyThemeClass();
-      refreshAll();
+      // Small delay so CSS transitions start before JS re-renders chart/buttons
+      setTimeout(refreshAll, 80);
     });
   });
 
@@ -1006,7 +1015,7 @@ function initThemeToggle() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (themeMode === 'auto') {
       applyThemeClass();
-      refreshAll();
+      setTimeout(refreshAll, 80);
     }
   });
 }
