@@ -67,7 +67,7 @@ const GIST_ID      = '5e7f9f71bdcdf0e5c9a8cba664452624';
 const GIST_FILE    = 'nightlog-data.json';
 const _EP          = 'CQEXNy4rWgQFYXpiLw84ClQJHF4uJgV2X38OXAAgVDwnG1wJAFYKAA=='; // encoded
 const _EK          = 'nightlog2026xk';
-const PIN_HASH     = '3e69f85e28228b9a23edc17f6742074bba4e6ea715344fa73eecb9246540b814';
+const PIN_HASH     = 'cb9012ad350bb123c2abac99e0fe79a5f81f9037ce7ca93c8da873413ca74e6d';
 const SESSION_KEY  = 'nightlog_pin_ok';
 const PIN_MAX_ATTEMPTS = 5;
 const PIN_LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutes
