@@ -67,12 +67,19 @@ const GIST_ID      = '5e7f9f71bdcdf0e5c9a8cba664452624';
 const GIST_FILE    = 'nightlog-data.json';
 const _EP          = 'CQEXNy4rWgQFYXpiLw84ClQJHF4uJgV2X38OXAAgVDwnG1wJAFYKAA=='; // encoded
 const _EK          = 'nightlog2026xk';
-const PIN_HASH     = 'cb9012ad350bb123c2abac99e0fe79a5f81f9037ce7ca93c8da873413ca74e6d';
+const PIN_HASH     = '045ef01547102959bb84ffdaeb6bee07385057d5999e3a6b9f0165908bc1f761';
 const SESSION_KEY  = 'nightlog_pin_ok';
-const PIN_MAX_ATTEMPTS = 5;
-const PIN_LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutes
+// Progressive lockout stages: { maxAttempts, lockoutMs }
+// Stage 0: 4 attempts → 1 min | Stage 1: 2 → 3 min | Stage 2: 2 → 5 min | Stage 3+: 2 → 1 hr (loop)
+const PIN_STAGES = [
+  { maxAttempts: 4, lockoutMs:      60 * 1000 },
+  { maxAttempts: 2, lockoutMs:  3 * 60 * 1000 },
+  { maxAttempts: 2, lockoutMs:  5 * 60 * 1000 },
+  { maxAttempts: 2, lockoutMs: 60 * 60 * 1000 },
+];
 const LS_PIN_ATTEMPTS  = 'nightlog_pin_attempts';
 const LS_PIN_LOCKOUT   = 'nightlog_pin_lockout';
+const LS_PIN_STAGE     = 'nightlog_pin_stage';
 const LS_SAVE_TS       = 'nightlog_save_ts'; // timestamp of last local save
 const CIRCUMFERENCE = 2 * Math.PI * 70; // SVG donut radius = 70
 
@@ -206,6 +213,11 @@ function waitForPin() {
       return parseInt(localStorage.getItem(LS_PIN_ATTEMPTS) || '0', 10);
     }
 
+    function getStage() {
+      const s = parseInt(localStorage.getItem(LS_PIN_STAGE) || '0', 10);
+      return Math.min(s, PIN_STAGES.length - 1);
+    }
+
     function setInputsDisabled(disabled) {
       inputs.forEach(inp => { inp.disabled = disabled; });
     }
@@ -220,7 +232,7 @@ function waitForPin() {
           clearInterval(countdownInterval);
           countdownInterval = null;
           localStorage.removeItem(LS_PIN_LOCKOUT);
-          localStorage.removeItem(LS_PIN_ATTEMPTS);
+          localStorage.setItem(LS_PIN_ATTEMPTS, '0');
           errorEl.textContent = '';
           setInputsDisabled(false);
           setTimeout(() => inputs[0].focus(), 50);
@@ -254,13 +266,14 @@ function waitForPin() {
 
     async function checkPin() {
       const entered = getEnteredPin();
-      if (entered.length < 6) return;
+      if (entered.length < 8) return;
 
       const hash = await sha256(entered);
       if (hash === PIN_HASH) {
         // Correct — clear lockout state and proceed
         localStorage.removeItem(LS_PIN_ATTEMPTS);
         localStorage.removeItem(LS_PIN_LOCKOUT);
+        localStorage.removeItem(LS_PIN_STAGE);
         localStorage.setItem(SESSION_KEY, '1');
         errorEl.textContent = '';
         overlay.classList.add('exit');
@@ -271,23 +284,25 @@ function waitForPin() {
       } else {
         // Wrong — increment attempts
         const attempts = getAttempts() + 1;
+        const stage    = getStage();
+        const { maxAttempts, lockoutMs } = PIN_STAGES[stage];
         localStorage.setItem(LS_PIN_ATTEMPTS, String(attempts));
 
-        if (attempts >= PIN_MAX_ATTEMPTS) {
-          localStorage.setItem(LS_PIN_LOCKOUT, String(Date.now() + PIN_LOCKOUT_MS));
+        digitsEl.classList.add('shake');
+        digitsEl.addEventListener('animationend', () => {
+          digitsEl.classList.remove('shake');
+        }, { once: true });
+
+        if (attempts >= maxAttempts) {
+          // Advance to next stage (capped at last)
+          const nextStage = Math.min(stage + 1, PIN_STAGES.length - 1);
+          localStorage.setItem(LS_PIN_STAGE,   String(nextStage));
+          localStorage.setItem(LS_PIN_LOCKOUT,  String(Date.now() + lockoutMs));
           localStorage.setItem(LS_PIN_ATTEMPTS, '0');
-          digitsEl.classList.add('shake');
-          digitsEl.addEventListener('animationend', () => {
-            digitsEl.classList.remove('shake');
-          }, { once: true });
           startCountdown();
         } else {
-          const left = PIN_MAX_ATTEMPTS - attempts;
+          const left = maxAttempts - attempts;
           errorEl.textContent = `NESPRÁVNÝ KÓD – ZBÝVÁ ${left} ${left === 1 ? 'POKUS' : 'POKUSY'}`;
-          digitsEl.classList.add('shake');
-          digitsEl.addEventListener('animationend', () => {
-            digitsEl.classList.remove('shake');
-          }, { once: true });
           clearDigits();
         }
       }
@@ -298,7 +313,7 @@ function waitForPin() {
         const v = e.target.value.replace(/[^0-9]/g, '');
         input.value = v ? v[v.length - 1] : '';
         if (input.value && idx < inputs.length - 1) inputs[idx + 1].focus();
-        if (getEnteredPin().length === 6) checkPin();
+        if (getEnteredPin().length === 8) checkPin();
       });
 
       input.addEventListener('keydown', (e) => {
